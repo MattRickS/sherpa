@@ -1,4 +1,4 @@
-keys:
+tokens:
   storage:
     choices:
     - ".archive"
