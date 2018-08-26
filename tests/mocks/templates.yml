@@ -1,0 +1,24 @@
+keys:
+  storage:
+    choices:
+    - ".archive"
+    - ".config"
+    - "dev"
+    - "prod"
+    default: "prod"
+    type: str
+  project: str
+  division: str
+  entity: str
+  task: str
+  department: str
+
+templates:
+  root: "/projects"
+  storage: "@root/{storage}"
+  project: "@storage/{project}"
+  division: "@project/{division}"
+  entity: "@division/{entity}"
+  task: "@entity/{task}"
+
+  department: "@storage/{department}"
