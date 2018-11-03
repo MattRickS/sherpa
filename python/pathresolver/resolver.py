@@ -60,17 +60,19 @@ class PathResolver(object):
         """
         :rtype: dict[str, Template]
         """
-        return self._templates
+        return self._templates.copy()
 
     @property
     def tokens(self):
         """
         :rtype: dict[str, Token]
         """
-        return self._tokens
+        return self._tokens.copy()
 
     def fields_from_path(self, path):
         """
+        Convenience method that calls parse_path and discards the template
+
         :param str  path:
         :rtype: dict
         """
@@ -79,7 +81,6 @@ class PathResolver(object):
 
     def get_template(self, template_name):
         """
-
         :param str  template_name:
         :rtype: Template
         """
@@ -88,6 +89,13 @@ class PathResolver(object):
         if template is None:
             template = self._load_template(template_name)
         return template
+
+    def get_token(self, token_name):
+        """
+        :param str  token_name:
+        :rtype: Token
+        """
+        return self._tokens[token_name]
 
     def parse_path(self, path):
         """
@@ -114,6 +122,8 @@ class PathResolver(object):
 
     def template_from_path(self, path):
         """
+        Convenience method that calls parse_path and discards the fields
+
         :param str  path:
         :rtype: Template
         """
@@ -126,9 +136,29 @@ class PathResolver(object):
         :rtype: Template
         """
         template_string = self._template_config[template_name]
-        # Pass in self so that the template can pull tokens and any recursive
-        # templates
-        template = Template.from_string(template_name, template_string, self)
+
+        tokens = {}
+        parent = None
+        relatives = []
+
+        for match in constants.MATCH_PATTERN.finditer(template_string):
+            is_template, token_name = match.groups()
+            if is_template:
+                # Extract parent and relative Templates by name
+                template = self.get_template(token_name)
+                if match.start() == 0:
+                    parent = template
+                else:
+                    relatives.append(template)
+            else:
+                # Extract local tokens, validate against loaded Tokens
+                tokens[token_name] = self._tokens[token_name]
+        template = Template(template_name,
+                            template_string,
+                            parent=parent,
+                            relatives=relatives,
+                            tokens=tokens)
+
         self._templates[template_name] = template
         return template
 

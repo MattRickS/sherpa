@@ -6,36 +6,8 @@ from pathresolver import constants
 from pathresolver.exceptions import FormatError, ParseError
 from pathresolver.token import Token
 
-MATCH_PATTERN = re.compile('(@)?{(\w+)}')
-
 
 class Template(object):
-    @classmethod
-    def from_string(cls, name, path, resolver):
-        """
-        :param str          name:
-        :param str          path:
-        :param PathResolver resolver:
-        :rtype: Template
-        """
-        tokens = {}
-        parent = None
-        relatives = []
-
-        for match in MATCH_PATTERN.finditer(path):
-            is_template, token_name = match.groups()
-            if is_template:
-                # Extract parent and relative Templates by name
-                template = resolver.get_template(token_name)
-                if match.start() == 0:
-                    parent = template
-                else:
-                    relatives.append(template)
-            else:
-                # Extract local tokens, validate against loaded Tokens
-                tokens[token_name] = resolver.tokens[token_name]
-        return cls(name, path, parent=parent, relatives=relatives, tokens=tokens)
-
     def __init__(self, name, path, parent=None, relatives=None, tokens=None):
         """
         :param str              name:
@@ -51,6 +23,7 @@ class Template(object):
         self._local_tokens = tokens
 
         self._pattern = None
+        self._regex = None
         self._tokens = None
 
     def __repr__(self):
@@ -60,6 +33,13 @@ class Template(object):
 
     def __str__(self):
         return '{}({})'.format(self._name, self.pattern)
+
+    @property
+    def linked_templates(self):
+        """
+        :rtype: list[Template]
+        """
+        return self._relatives + ([self._parent] if self._parent else [])
 
     @property
     def name(self):
@@ -82,19 +62,22 @@ class Template(object):
         """
         if self._pattern is None:
             # Assemble all the patterns required by the template
-            linked_patterns = {t.name: t.pattern for t in self._relatives}
-            if self._parent:
-                linked_patterns[self._parent.name] = self._parent.pattern
+            linked_patterns = {t.name: t.pattern for t in self.linked_templates}
 
-            # Iterate over the linked templates to assemble the pattern
+            # Walk through this template's string and replace any references to
+            # other templates with that template's pattern.
             last_idx = 0
             self._pattern = ''
-            for match in MATCH_PATTERN.finditer(self._path):
+            for match in constants.MATCH_PATTERN.finditer(self._path):
+                # We only care about templates, preserve token patterns
                 is_template, name = match.groups()
                 if not is_template:
                     continue
 
-                # Add any intermediate path and the template pattern
+                # Rebuild this template's string by cutting at the indices for
+                # any template reference, preserving the part that belongs to
+                # this template and replacing the reference segment with the
+                # target template's pattern.
                 start, end = match.span()
                 self._pattern += self._path[last_idx:start] + linked_patterns[name]
                 last_idx = end
@@ -108,17 +91,18 @@ class Template(object):
         """
         :rtype: str
         """
-        regex_tokens = {t.name: '(?P<{}>{})'.format(t.name, t.regex) for t in
-                        self._get_tokens().values()}
-        regex_pattern = '^' + self.pattern.format(**regex_tokens) + '$'
-        return regex_pattern
+        if self._regex is None:
+            regex_tokens = {t.name: '(?P<{}>{})'.format(t.name, t.regex)
+                            for t in self._get_tokens().values()}
+            self._regex = '^' + self.pattern.format(**regex_tokens) + '$'
+        return self._regex
 
     @property
     def relatives(self):
         """
         :rtype: list[Template]
         """
-        return self._relatives[:]  # return a copy to stay immutable
+        return self._relatives[:]
 
     @property
     def tokens(self):
@@ -139,12 +123,12 @@ class Template(object):
         missing = []
         tokens = {}
         for name, token in self._get_tokens().items():
-            value = fields.get(name)
-            value = token.default if value is None else token.format(value)
+            # Token default is the type value, not a string. Must still be formatted
+            value = fields.get(name, token.default)
             if value is None:
                 missing.append(name)
             else:
-                tokens[name] = value
+                tokens[name] = token.format(value)
         if missing:
             raise FormatError('Missing required fields for template {}: {}'.format(
                 self, missing
@@ -154,15 +138,22 @@ class Template(object):
     def missing(self, fields, ignore_defaults=True):
         """
         :param      fields:             Any iterable of strings
-        :param bool ignore_defaults:    Ignores missing fields if a default value is available
+        :param bool ignore_defaults:    Ignores missing fields if a default
+                                        value is available
         :rtype: dict[str, Token]
         """
-        return {f: t for f, t in self._get_tokens().items() if
-                f not in fields and (ignore_defaults or t.default is not None)}
+        return {f: t for f, t in self._get_tokens().items()
+                if f not in fields and (ignore_defaults or t.default is not None)}
 
     def parse(self, path):
-        """converts path to dict to fields"""
-        # Regex pattern
+        """
+        Parses the path against the pattern, extracting a dictionary of the
+        fields and their values.
+
+        :raise ParseError: if the path doesn't match the template's pattern
+        :param str  path:
+        :rtype: dict[str, object]
+        """
         match = re.match(self.regex, path)
         if not match:
             raise ParseError('Path {!r} does not match Template: {}'.format(path, self))
@@ -183,6 +174,7 @@ class Template(object):
         """
         tokens = fields.copy()
         for f, t in self.missing(fields, ignore_defaults=True).items():
+            # Default value might be None; in either case, fallback on wildcard
             tokens[f] = (t.default if use_defaults else None) or constants.WILDCARD
 
         pattern = self.format(tokens)
@@ -190,11 +182,14 @@ class Template(object):
 
     def _get_tokens(self):
         """
+        Lazy loads the full set of tokens used by this template's full pattern,
+        ie, including the tokens of all referenced templates
+
         :rtype: dict[str, Token]
         """
         if self._tokens is None:
             tokens = self._local_tokens.copy() if self._local_tokens else {}
-            if self._parent:
-                tokens.update(self._parent.tokens)
+            for template in self.linked_templates:
+                tokens.update(template.tokens)
             self._tokens = tokens
         return self._tokens

@@ -1,3 +1,5 @@
+import re
+
 from pathresolver import constants
 from pathresolver.exceptions import FormatError, ParseError
 
@@ -16,23 +18,23 @@ class Token(object):
             if subcls.type.__name__ == string_type:
                 return subcls
 
-    def __init__(self, name, default=None, padding=None, valid_values=None):
+    def __init__(self, name, default=None, choices=None, padding=None):
         """
-        :param str  name:
-        :param str  default:
-        :param int  padding:
-        :param list valid_values:
+        :param str          name:
+        :param str          default:
+        :param list[str]    choices:
+        :param int          padding:
         """
         self._name = name
         self._default = None
+        self._choices = None
         self._padding = padding or 0
-        self._valid_values = None
 
         # Ensure the default value is a valid choice, and all valid values are the correct type
-        if valid_values:
-            if default and default not in valid_values:
+        if choices:
+            if default and default not in choices:
                 raise ValueError('Invalid default value for token {}'.format(name))
-            self._valid_values = [self.parse(token) for token in valid_values]
+            self._choices = [self.parse(str(token)) for token in choices]
 
         # Convert to the token's type, raise error if an invalid type
         if default:
@@ -44,11 +46,18 @@ class Token(object):
             name=self._name,
             default=self._default,
             padding=self._padding,
-            choices=self._valid_values,
+            choices=self._choices,
         )
 
     def __str__(self):
         return '{}({})'.format(self.__class__.__name__, self._name)
+
+    @property
+    def choices(self):
+        """
+        :rtype: list
+        """
+        return self._choices[:] if self._choices else None
 
     @property
     def default(self):
@@ -78,13 +87,6 @@ class Token(object):
         """
         raise NotImplementedError
 
-    @property
-    def valid_values(self):
-        """
-        :rtype: list
-        """
-        return self._valid_values[:] if self._valid_values else None
-
     def format(self, value):
         """
         Converts a value to a string matching this Token's format.
@@ -104,10 +106,10 @@ class Token(object):
             raise FormatError('Invalid value for {self}: {value}'.format(
                 self=self, value=value
             ))
-        if self._valid_values and value not in self._valid_values:
+        if self._choices and value not in self._choices:
             raise FormatError(
                 'Invalid value for {self}: {value}. Valid values: {choices}'.format(
-                    self=self, value=value, choices=self._valid_values
+                    self=self, value=value, choices=self._choices
                 )
             )
         string = str(value)
@@ -120,22 +122,19 @@ class Token(object):
         :param str  token:
         :return:
         """
-        if len(token) < self._padding:
-            raise ParseError(
-                'Token length does not match padding ({padding}) for {self}: {value}'.format(
-                    padding=self._padding, self=self, value=token
-                )
-            )
         try:
+            match = re.match('^' + self.regex + '$', token)
+            if match is None:
+                raise ValueError
             token = self.type(token)
         except ValueError:
             raise ParseError('Invalid value for {self}: {value}'.format(
                 self=self, value=token
             ))
-        if self._valid_values and token not in self._valid_values:
+        if self._choices and token not in self._choices:
             raise ParseError(
                 'Invalid value for token {self}: {value}. Valid values: {choices}'.format(
-                    self=self, value=token, choices=self._valid_values
+                    self=self, value=token, choices=self._choices
                 )
             )
         return token
@@ -164,6 +163,24 @@ class FloatToken(Token):
             str_value = str_value + '0' * (self._padding - len(str_value))
         return str_value
 
+    def parse(self, token):
+        """
+        Converts a string to this Token's type
+
+        :param str  token:
+        :return:
+        """
+        parsed = super(FloatToken, self).parse(token)
+        # Float padding applies to the trailing numbers; only validate after
+        # the regex has confirmed it meets the format
+        if self._padding and len(token.split('.')[1]) != self._padding:
+            raise ParseError(
+                'Token does not match padding ({padding}) for {self}: {value}'.format(
+                    padding=self._padding, self=self, value=token
+                )
+            )
+        return parsed
+
 
 class IntToken(Token):
     type = int
@@ -188,13 +205,22 @@ class IntToken(Token):
             str_value = '0' * (self._padding - len(str_value)) + str_value
         return str_value
 
+    def parse(self, token):
+        """
+        Converts a string to this Token's type
+
+        :param str  token:
+        :return:
+        """
+        if self._padding and len(token) != self._padding:
+            raise ParseError(
+                'Token does not match padding ({padding}) for {self}: {value}'.format(
+                    padding=self._padding, self=self, value=token
+                )
+            )
+        return super(IntToken, self).parse(token)
+
 
 class StringToken(Token):
     type = str
-
-    @property
-    def regex(self):
-        """
-        :rtype: str
-        """
-        return '[^/]{%s,}' % self._padding if self._padding else '[^/]+'
+    regex = '[^/]+'
