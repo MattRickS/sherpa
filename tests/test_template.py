@@ -2,8 +2,8 @@ from collections import namedtuple
 
 import pytest
 
-from pathresolver.token import Token
-from pathresolver.template import Template
+from sherpa.token import Token
+from sherpa.template import Template
 
 
 MockTemplate = namedtuple('MockTemplate', 'template parent pattern relatives tokens path fields')

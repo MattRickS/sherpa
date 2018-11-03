@@ -1,10 +1,10 @@
 import os
 import yaml
 
-from pathresolver import constants
-from pathresolver.exceptions import ParseError, PathResolverError
-from pathresolver.template import Template
-from pathresolver.token import Token
+from sherpa import constants
+from sherpa.exceptions import ParseError, PathResolverError
+from sherpa.template import Template
+from sherpa.token import Token
 
 
 class PathResolver(object):

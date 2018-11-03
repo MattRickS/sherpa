@@ -1,7 +1,7 @@
 import pytest
 
-from pathresolver.token import Token, IntToken, StringToken, FloatToken
-from pathresolver.exceptions import ParseError
+from sherpa.token import Token, IntToken, StringToken, FloatToken
+from sherpa.exceptions import ParseError
 
 
 @pytest.mark.parametrize('string_type, cls', (

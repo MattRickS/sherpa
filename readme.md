@@ -1,4 +1,6 @@
-# PathResolver
+# Sherpa
+
+-- _Shows you your path_
 
 ### Terminology
 * path: filesystem path, may or may not exist

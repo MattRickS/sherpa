@@ -2,9 +2,9 @@ import glob
 import os
 import re
 
-from pathresolver import constants
-from pathresolver.exceptions import FormatError, ParseError
-from pathresolver.token import Token
+from sherpa import constants
+from sherpa.exceptions import FormatError, ParseError
+from sherpa.token import Token
 
 
 class Template(object):

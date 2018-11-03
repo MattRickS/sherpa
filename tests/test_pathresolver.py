@@ -3,8 +3,8 @@ import shutil
 
 import pytest
 
-from pathresolver import constants
-from pathresolver.resolver import PathResolver
+from sherpa import constants
+from sherpa.resolver import PathResolver
 
 
 @pytest.fixture(scope='module')

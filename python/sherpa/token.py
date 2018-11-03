@@ -1,7 +1,7 @@
 import re
 
-from pathresolver import constants
-from pathresolver.exceptions import FormatError, ParseError
+from sherpa import constants
+from sherpa.exceptions import FormatError, ParseError
 
 
 class Token(object):
