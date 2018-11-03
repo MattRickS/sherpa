@@ -22,10 +22,10 @@ class Template(object):
         self._relatives = tuple(relatives or ())
         self._local_tokens = tokens
 
-        self._ordered_fields = None
-        self._pattern = None
-        self._regex = None
-        self._tokens = None
+        self._ordered_fields = None     # type: tuple[Token]
+        self._pattern = None            # type: str
+        self._regex = None              # type: str
+        self._tokens = None             # type: dict[str, Token]
 
     def __repr__(self):
         return 'Template({!r}, {!r}, parent={}, relatives={}, tokens={})'.format(
@@ -38,9 +38,11 @@ class Template(object):
     @property
     def linked_templates(self):
         """
+        All immediate templates linked to this template, relatives and parent.
+
         :rtype: list[Template]
         """
-        return self._relatives + ((self._parent, ) if self._parent else ())
+        return ((self._parent, ) if self._parent else ()) + self._relatives
 
     @property
     def name(self):
@@ -52,6 +54,8 @@ class Template(object):
     @property
     def ordered_fields(self):
         """
+        Names of the tokens in the order they appear in the pattern
+
         :rtype: tuple[str]
         """
         if self._ordered_fields is None:
@@ -61,6 +65,8 @@ class Template(object):
     @property
     def parent(self):
         """
+        The leading referenced template if one exists
+
         :rtype: Template
         """
         return self._parent
@@ -68,6 +74,8 @@ class Template(object):
     @property
     def pattern(self):
         """
+        Full template configuration pattern with relative templates expanded
+
         :rtype: str
         """
         if self._pattern is None:
@@ -77,6 +85,8 @@ class Template(object):
     @property
     def regex(self):
         """
+        Regex pattern used to match against strings
+
         :rtype: str
         """
         if self._regex is None:
@@ -88,6 +98,9 @@ class Template(object):
     @property
     def relatives(self):
         """
+        All immediate linked templates that are not the parent, ie, that do not
+        define the root of the path
+
         :rtype: tuple[Template]
         """
         return self._relatives
@@ -142,6 +155,7 @@ class Template(object):
         :param str  path:
         :rtype: dict[str, object]
         """
+        path = path.replace(os.path.sep, '/')
         match = re.match(self.regex, path)
         if match is None:
             raise ParseError('Path {!r} does not match Template: {}'.format(path, self))
