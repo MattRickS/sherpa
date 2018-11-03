@@ -19,9 +19,10 @@ class Template(object):
         self._name = name
         self._path = path
         self._parent = parent
-        self._relatives = relatives or []
+        self._relatives = tuple(relatives or ())
         self._local_tokens = tokens
 
+        self._ordered_fields = None
         self._pattern = None
         self._regex = None
         self._tokens = None
@@ -39,7 +40,7 @@ class Template(object):
         """
         :rtype: list[Template]
         """
-        return self._relatives + ([self._parent] if self._parent else [])
+        return self._relatives + ((self._parent, ) if self._parent else ())
 
     @property
     def name(self):
@@ -47,6 +48,15 @@ class Template(object):
         :rtype: str
         """
         return self._name
+
+    @property
+    def ordered_fields(self):
+        """
+        :rtype: tuple[str]
+        """
+        if self._ordered_fields is None:
+            self._resolve_pattern()
+        return self._ordered_fields[:]
 
     @property
     def parent(self):
@@ -61,29 +71,7 @@ class Template(object):
         :rtype: str
         """
         if self._pattern is None:
-            # Assemble all the patterns required by the template
-            linked_patterns = {t.name: t.pattern for t in self.linked_templates}
-
-            # Walk through this template's string and replace any references to
-            # other templates with that template's pattern.
-            last_idx = 0
-            self._pattern = ''
-            for match in constants.MATCH_PATTERN.finditer(self._path):
-                # We only care about templates, preserve token patterns
-                is_template, name = match.groups()
-                if not is_template:
-                    continue
-
-                # Rebuild this template's string by cutting at the indices for
-                # any template reference, preserving the part that belongs to
-                # this template and replacing the reference segment with the
-                # target template's pattern.
-                start, end = match.span()
-                self._pattern += self._path[last_idx:start] + linked_patterns[name]
-                last_idx = end
-
-            # Add any remaining path
-            self._pattern += self._path[last_idx:]
+            self._resolve_pattern()
         return self._pattern
 
     @property
@@ -92,17 +80,17 @@ class Template(object):
         :rtype: str
         """
         if self._regex is None:
-            regex_tokens = {t.name: '(?P<{}>{})'.format(t.name, t.regex)
-                            for t in self._get_tokens().values()}
+            regex_tokens = {token.name: '({})'.format(token.regex)
+                            for token in self._get_tokens().values()}
             self._regex = '^' + self.pattern.format(**regex_tokens) + '$'
         return self._regex
 
     @property
     def relatives(self):
         """
-        :rtype: list[Template]
+        :rtype: tuple[Template]
         """
-        return self._relatives[:]
+        return self._relatives
 
     @property
     def tokens(self):
@@ -155,11 +143,20 @@ class Template(object):
         :rtype: dict[str, object]
         """
         match = re.match(self.regex, path)
-        if not match:
+        if match is None:
             raise ParseError('Path {!r} does not match Template: {}'.format(path, self))
 
-        fields = {token: self._get_tokens()[token].parse(value) for token, value in
-                  match.groupdict().items()}
+        tokens = self._get_tokens()
+        fields = {}
+        for field, value in zip(self._ordered_fields, match.groups()):
+            parsed = tokens[field].parse(value)
+            existing = fields.get(field)
+            if existing is not None and existing != parsed:
+                raise ParseError('Different values for token: {} : ({}, {})'.format(
+                    field, existing, parsed
+                ))
+            fields[field] = parsed
+
         return fields
 
     def paths(self, fields, use_defaults=False):
@@ -193,3 +190,34 @@ class Template(object):
                 tokens.update(template.tokens)
             self._tokens = tokens
         return self._tokens
+
+    def _resolve_pattern(self):
+        """ Extract the full pattern and ordered fields """
+        # Assemble all the patterns required by the template
+        linked_templates = {t.name: t for t in self.linked_templates}
+        ordered_fields = []
+
+        # Walk through this template's string and replace any references to
+        # other templates with that template's pattern.
+        last_idx = 0
+        self._pattern = ''
+        for match in constants.MATCH_PATTERN.finditer(self._path):
+            # We only care about templates, preserve token patterns
+            is_template, name = match.groups()
+            if not is_template:
+                ordered_fields.append(name)
+                continue
+
+            # Rebuild this template's string by cutting at the indices for
+            # any template reference, preserving the part that belongs to
+            # this template and replacing the reference segment with the
+            # target template's pattern.
+            start, end = match.span()
+            relative_template = linked_templates[name]
+            ordered_fields += relative_template.ordered_fields
+            self._pattern += self._path[last_idx:start] + relative_template.pattern
+            last_idx = end
+
+        # Add any remaining path
+        self._pattern += self._path[last_idx:]
+        self._ordered_fields = tuple(ordered_fields)
