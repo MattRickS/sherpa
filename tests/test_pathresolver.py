@@ -81,6 +81,14 @@ class MockFilesystem(object):
                     'category': 'categoryA',
                 }
             },
+            'projectA/active/categoryB': {
+                'template': 'category',
+                'fields': {
+                    'project': 'projectA',
+                    'storage': 'active',
+                    'category': 'categoryB',
+                }
+            },
             'projectA/active/categoryA/entityA': {
                 'template': 'entity',
                 'fields': {
@@ -114,18 +122,6 @@ class MockFilesystem(object):
                     'extension': 'txt'
                 }
             },
-            'projectA/dev/categoryA/entityA/publishes/eggs/v001/entityA_eggs_v001.txt': {
-                'template': 'publish',
-                'fields': {
-                    'project': 'projectA',
-                    'storage': 'dev',
-                    'category': 'categoryA',
-                    'entity': 'entityA',
-                    'publish_type': 'eggs',
-                    'version': 1,
-                    'extension': 'txt'
-                }
-            },
             'projectA/active/categoryA/entityA/publishes/eggs/v002/entityA_eggs_v002.txt': {
                 'template': 'publish',
                 'fields': {
@@ -135,6 +131,18 @@ class MockFilesystem(object):
                     'entity': 'entityA',
                     'publish_type': 'eggs',
                     'version': 2,
+                    'extension': 'txt'
+                }
+            },
+            'projectA/dev/categoryA/entityA/publishes/eggs/v001/entityA_eggs_v001.txt': {
+                'template': 'publish',
+                'fields': {
+                    'project': 'projectA',
+                    'storage': 'dev',
+                    'category': 'categoryA',
+                    'entity': 'entityA',
+                    'publish_type': 'eggs',
+                    'version': 1,
                     'extension': 'txt'
                 }
             },
@@ -220,8 +228,9 @@ class MockFilesystem(object):
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
             # Create the file
-            with open(filepath):
-                pass
+            if filepath.endswith('.txt'):
+                with open(filepath, 'w+'):
+                    pass
 
     def remove(self):
         shutil.rmtree(self.root)
@@ -232,9 +241,9 @@ def mock_filesystem(mock_directory):
     root = str(mock_directory.join('/projects')).replace('\\', '/')
     filesystem = MockFilesystem(root)
 
-    # filesystem.create()
+    filesystem.create()
     yield filesystem
-    # filesystem.remove()
+    filesystem.remove()
 
 
 def test_from_environment(mock_config):
@@ -251,3 +260,31 @@ def test_parse_path(mock_filesystem):
         template, fields = mock_filesystem.pathresolver.parse_path(filepath)
         assert template.name == data['template']
         assert fields == data['fields']
+
+
+def test_format_path(mock_filesystem):
+    for filepath, data in mock_filesystem.filepaths.items():
+        template = mock_filesystem.pathresolver.get_template(data['template'])
+        path = template.format(data['fields']).replace('/', os.path.sep)
+        assert path == filepath
+
+
+@pytest.mark.parametrize('template_name, fields', (
+    ('project', {}),
+    ('category', {'storage': 'active'}),
+    ('entity', {'storage': 'active', 'category': 'categoryA', 'entity': 'entityA'}),
+))
+def test_paths(mock_filesystem, template_name, fields):
+    template = mock_filesystem.pathresolver.get_template(template_name)
+    paths = [f for f, d in mock_filesystem.filepaths.items() if template_name == d['template']]
+    assert template.paths(fields) == paths
+
+
+@pytest.mark.parametrize('field, fields, values', (
+    ('version', {'storage': 'active', 'category': 'categoryA', 'entity': 'entityA', 'publish_type': 'eggs'}, [1, 2]),
+    ('version', {'storage': 'active', 'category': 'categoryA', 'entity': 'entityA', 'publish_type': 'spam'}, [1]),
+    ('version', {'storage': 'active', 'category': 'categoryA', 'entity': 'entityB', 'publish_type': 'spam'}, [1]),
+))
+def test_values_from_paths(mock_filesystem, field, fields, values):
+    template = mock_filesystem.pathresolver.get_template('publish')
+    assert list(template.values_from_paths(field, fields)) == values
