@@ -191,6 +191,21 @@ class Template(object):
         pattern = self.format(tokens)
         return [os.path.normpath(p) for p in glob.iglob(pattern)]
 
+    def values_from_paths(self, field, fields, use_defaults=False):
+        """
+        Finds all paths on disk that match the given fields and extracts the
+        value for the requested field in each path.
+
+        :param str                  field:
+        :param dict[str, object]    fields:
+        :param bool                 use_defaults:
+        :rtype: dict[object, str]
+        """
+        fields[field] = constants.WILDCARD
+        paths = self.paths(fields, use_defaults)
+        path_fields = {self.parse(p)[field]: p for p in paths}
+        return path_fields
+
     def _get_tokens(self):
         """
         Lazy loads the full set of tokens used by this template's full pattern,
