@@ -2,8 +2,9 @@ import glob
 import os
 import re
 
-from .exceptions import FormatError, ParseError
-from .token import Token, WILDCARD
+from pathresolver import constants
+from pathresolver.exceptions import FormatError, ParseError
+from pathresolver.token import Token
 
 MATCH_PATTERN = re.compile('(@)?{(\w+)}')
 
@@ -117,7 +118,7 @@ class Template(object):
         """
         :rtype: list[Template]
         """
-        return self._relatives
+        return self._relatives[:]  # return a copy to stay immutable
 
     @property
     def tokens(self):
@@ -166,7 +167,7 @@ class Template(object):
         if not match:
             raise ParseError('Path {!r} does not match Template: {}'.format(path, self))
 
-        fields = {token: self._tokens[token].parse(value) for token, value in
+        fields = {token: self._get_tokens()[token].parse(value) for token, value in
                   match.groupdict().items()}
         return fields
 
@@ -182,12 +183,8 @@ class Template(object):
         """
         tokens = fields.copy()
         for f, t in self.missing(fields, ignore_defaults=True).items():
-            tokens[f] = (t.default if use_defaults else None) or WILDCARD
+            tokens[f] = (t.default if use_defaults else None) or constants.WILDCARD
 
-        # tokens = {f: WILDCARD for f in self.missing(fields, ignore_defaults=not use_defaults)}
-        # tokens.update(fields)
-
-        # TODO: Add padding to glob
         pattern = self.format(tokens)
         return [os.path.normpath(p) for p in glob.iglob(pattern)]
 
