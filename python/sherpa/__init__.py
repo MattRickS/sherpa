@@ -1,2 +1,2 @@
-from .exceptions import FormatError, ParseError, PathResolverError
-from .resolver import PathResolver
+from sherpa.exceptions import FormatError, ParseError, PathResolverError
+from sherpa.resolver import PathResolver
