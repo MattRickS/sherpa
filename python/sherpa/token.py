@@ -223,4 +223,4 @@ class IntToken(Token):
 
 class StringToken(Token):
     type = str
-    regex = '[^/]+'
+    regex = '[^/.]+'
