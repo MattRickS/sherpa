@@ -79,6 +79,27 @@ class PathResolver(object):
         template, fields = self.parse_path(path)
         return fields
 
+    def extract_closest_template(self, path, directory=True):
+        """
+        Finds the template that extracts the greatest number of directories in 
+        the path and returns the Template, matched string, matched fields and 
+        the relative remainder of the path
+        
+        :param str  path: 
+        :param bool directory:  If True, partial matches are only considered if 
+                                they match a full directory and not a partial 
+                                filename match
+        :rtype: tuple[Template, str, dict, str]
+        """
+        matches = {}
+        for template in self._templates.values():
+            try:
+                match_path, fields, relative = template.extract(path, directory=directory)
+                matches[relative.count('/')] = (template, match_path, fields, relative)
+            except ParseError:
+                continue
+        return matches[min(matches)]
+
     def get_template(self, template_name):
         """
         :param str  template_name:

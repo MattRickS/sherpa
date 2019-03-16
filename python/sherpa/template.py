@@ -112,18 +112,31 @@ class Template(object):
         """
         return self._get_tokens().copy()
 
-    def extract(self, path):
+    def extract(self, path, directory=True):
         """
         Splits the path to the part that matches the template and the relative 
         remainder.
         
         :raise ParseError: if the path doesn't match the template's pattern
         :param str  path: 
+        :param bool directory:  If True, a partial match is only considered if 
+                                it matches a full directory and not a partial 
+                                filename match. The returned relative path will
+                                strip any leading path separator
         :rtype: tuple[str, dict, str]
         """
-        match, fields = self._parse(path)
-        start = match.group(0)
+        # TODO: If the regex already ends with a trailing /, how should it be 
+        # handled?
+        suffix = '(?:$|/)' if directory else ''
+        regex = '^' + self.regex + suffix
+        match, fields = self._parse(path, regex)
+        # TODO: start is using the replaced string, not the section of the 
+        # original path
+        start = match.group(0)  # Extract the trailing / if added
+        # TODO: No guarantee the length is correct with path separators replaced
         end = path[len(start):]
+        if start.endswith('/'):
+            start = start[:-1]
         return start, fields, end
 
     def format(self, fields):
@@ -203,7 +216,7 @@ class Template(object):
         :param str  path:
         :rtype: dict[str, object]
         """
-        _, fields = self._parse(path, '$')
+        _, fields = self._parse(path, '^' + self.regex + '$')
         return fields
 
     def paths(self, fields, use_defaults=False):
@@ -253,11 +266,11 @@ class Template(object):
             self._tokens = tokens
         return self._tokens
 
-    def _parse(self, path, suffix=''):
+    def _parse(self, path, regex):
         # type: (str, str) -> tuple[re.Match, dict]
         """ Matches the pattern to the path, returning the match and fields """
         path = path.replace(os.path.sep, '/')
-        match = re.match('^' + self.regex + suffix, path)
+        match = re.match(regex, path)
         if match is None:
             raise ParseError('Path {!r} does not match Template: {}'.format(path, self))
 
