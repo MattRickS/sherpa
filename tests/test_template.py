@@ -102,3 +102,9 @@ def test_format(mock_templates):
 def test_parse(mock_templates):
     for mock_template in mock_templates:
         assert mock_template.template.parse(mock_template.path) == mock_template.fields
+
+
+def test_extract(mock_templates, extra='/sub/path'):
+    for mock_template in mock_templates:
+        expected = (mock_template.path, mock_template.fields, extra)
+        assert mock_template.template.extract(mock_template.path + extra) == expected

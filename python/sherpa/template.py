@@ -112,6 +112,20 @@ class Template(object):
         """
         return self._get_tokens().copy()
 
+    def extract(self, path):
+        """
+        Splits the path to the part that matches the template and the relative 
+        remainder.
+        
+        :raise ParseError: if the path doesn't match the template's pattern
+        :param str  path: 
+        :rtype: tuple[str, dict, str]
+        """
+        match, fields = self._parse(path)
+        start = match.group(0)
+        end = path[len(start):]
+        return start, fields, end
+
     def format(self, fields):
         """
         Formats the template pattern using the given fields. Missing fields use
@@ -189,22 +203,7 @@ class Template(object):
         :param str  path:
         :rtype: dict[str, object]
         """
-        path = path.replace(os.path.sep, '/')
-        match = re.match('^' + self.regex + '$', path)
-        if match is None:
-            raise ParseError('Path {!r} does not match Template: {}'.format(path, self))
-
-        tokens = self._get_tokens()
-        fields = {}
-        for field, value in zip(self._ordered_fields, match.groups()):
-            parsed = tokens[field].parse(value)
-            existing = fields.get(field)
-            if existing is not None and existing != parsed:
-                raise ParseError('Different values for token: {} : ({}, {})'.format(
-                    field, existing, parsed
-                ))
-            fields[field] = parsed
-
+        _, fields = self._parse(path, '$')
         return fields
 
     def paths(self, fields, use_defaults=False):
@@ -253,6 +252,27 @@ class Template(object):
                 tokens.update(template.tokens)
             self._tokens = tokens
         return self._tokens
+
+    def _parse(self, path, suffix=''):
+        # type: (str, str) -> tuple[re.Match, dict]
+        """ Matches the pattern to the path, returning the match and fields """
+        path = path.replace(os.path.sep, '/')
+        match = re.match('^' + self.regex + suffix, path)
+        if match is None:
+            raise ParseError('Path {!r} does not match Template: {}'.format(path, self))
+
+        tokens = self._get_tokens()
+        fields = {}
+        for field, value in zip(self._ordered_fields, match.groups()):
+            parsed = tokens[field].parse(value)
+            existing = fields.get(field)
+            if existing is not None and existing != parsed:
+                raise ParseError('Different values for token: {} : ({}, {})'.format(
+                    field, existing, parsed
+                ))
+            fields[field] = parsed
+
+        return match, fields
 
     def _resolve_pattern(self):
         """ Extract the full pattern and ordered fields """
