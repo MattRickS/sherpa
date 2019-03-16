@@ -92,7 +92,7 @@ class Template(object):
         if self._regex is None:
             regex_tokens = {token.name: '({})'.format(token.regex)
                             for token in self._get_tokens().values()}
-            self._regex = '^' + self.pattern.format(**regex_tokens) + '$'
+            self._regex = self.pattern.format(**regex_tokens)
         return self._regex
 
     @property
@@ -190,7 +190,7 @@ class Template(object):
         :rtype: dict[str, object]
         """
         path = path.replace(os.path.sep, '/')
-        match = re.match(self.regex, path)
+        match = re.match('^' + self.regex + '$', path)
         if match is None:
             raise ParseError('Path {!r} does not match Template: {}'.format(path, self))
 
