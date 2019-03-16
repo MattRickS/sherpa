@@ -136,6 +136,40 @@ class Template(object):
             ))
         return self.pattern.format(**tokens)
 
+    def join(self, template):
+        """
+        Appends the given template, returning a new Template object.
+        Intended for combining relative templates on the fly.
+
+        :param Template|str template: Suffix template or string
+        :rtype: Template
+        """
+        tokens = self._local_tokens.copy()
+        if isinstance(template, Template):
+            relatives = self._relatives + template.relatives
+            if template.parent is not None:
+                relatives = relatives + (template.parent,)
+
+            tokens.update(template._local_tokens)
+            name = template.name
+            path = template._path
+        elif isinstance(template, str):
+            relatives = self._relatives
+            name = template
+            path = template
+        else:
+            raise TypeError(
+                'Cannot join unsupported datatype: {}'.format(type(template))
+            )
+
+        joiner = '' if path.startswith('/') else '/'
+        joined_template = Template(self._name + '/' + name,
+                                   self._path + joiner + path,
+                                   parent=self._parent,
+                                   relatives=relatives,
+                                   tokens=tokens)
+        return joined_template
+
     def missing(self, fields, ignore_defaults=True):
         """
         :param      fields:             Any iterable of strings
