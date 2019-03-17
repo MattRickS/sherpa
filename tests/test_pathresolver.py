@@ -36,6 +36,7 @@ class MockFilesystem(object):
                 'entity': 'str',
                 'task': 'str',
                 'extension': 'str',
+                'metadata': 'str',
                 'publish_type': {
                     'type': 'str',
                     'choices': [
@@ -54,6 +55,7 @@ class MockFilesystem(object):
                 'storage': '@{project}/{storage}',
                 'category': '@{storage}/{category}',
                 'entity': '@{category}/{entity}',
+                'entity_data': '@{entity}/{metadata}.json',
                 'publish': '@{entity}/publishes/{publish_type}/v{version}/{entity}_{publish_type}_v{version}.{extension}',
                 'work': '@{entity}/work/{task}/workfile.{extension}'
             }
@@ -64,7 +66,7 @@ class MockFilesystem(object):
                 'template': 'project',
                 'fields': {
                     'project': 'projectA',
-                }
+                },
             },
             'projectA/active': {
                 'template': 'storage',
@@ -288,3 +290,29 @@ def test_paths(mock_filesystem, template_name, fields):
 def test_values_from_paths(mock_filesystem, field, fields, values):
     template = mock_filesystem.pathresolver.get_template('publish')
     assert list(template.values_from_paths(field, fields)) == values
+
+
+@pytest.mark.parametrize('path, directory, template, start, end', (
+    ('/projects/path/to/something', True, 'sequence', '/projects/path/to/something', ''),
+    ('/projects/path/to/something.ext', True, 'storage', '/projects/path/to', 'something.ext'),
+    ('/projects/path/to/something.ext', False, 'sequence', '/projects/path/to/something', '.ext'),
+))
+def test_extract_closest_template(path, directory, template, start, end):
+    pr = PathResolver({
+        'tokens': {
+            'project': 'str',
+            'storage': 'str',
+            'sequence': 'str',
+        },
+        'templates': {
+            'root': '/projects',
+            'project': '@{root}/{project}',
+            'storage': '@{project}/{storage}',
+            'sequence': '@{storage}/{sequence}',
+        }
+    })
+    results = pr.extract_closest_template(path, directory=directory)
+    template = pr.get_template(template)
+    assert results[0] == template
+    assert results[1] == start
+    assert results[3] == end
