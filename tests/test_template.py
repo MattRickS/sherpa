@@ -104,7 +104,18 @@ def test_parse(mock_templates):
         assert mock_template.template.parse(mock_template.path) == mock_template.fields
 
 
-def test_extract(mock_templates, extra='/sub/path'):
+def test_extract(mock_templates, extra='sub/path'):
     for mock_template in mock_templates:
         expected = (mock_template.path, mock_template.fields, extra)
-        assert mock_template.template.extract(mock_template.path + extra) == expected
+        path = '/'.join((mock_template.path, extra))
+        assert mock_template.template.extract(path) == expected
+
+
+def test_extract_specific():
+    from sherpa.token import StringToken
+    project_token = StringToken('project')
+    project = Template('project', '/projects/{project}', tokens={'project': project_token})
+    assert project.extract('/projects/path') == ('/projects/path', {'project': 'path'}, '')
+    assert project.extract('/projects/path/to/something.ext') == ('/projects/path', {'project': 'path'}, 'to/something.ext')
+    assert project.extract('/projects/path/to/something.ext', directory=False) == ('/projects/path', {'project': 'path'}, '/to/something.ext')
+

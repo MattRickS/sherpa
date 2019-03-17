@@ -121,21 +121,26 @@ class Template(object):
         :param str  path: 
         :param bool directory:  If True, a partial match is only considered if 
                                 it matches a full directory and not a partial 
-                                filename match. The returned relative path will
-                                strip any leading path separator
+                                folder/filename match. The returned relative 
+                                path will strip any leading path separator.
         :rtype: tuple[str, dict, str]
         """
-        # TODO: If the regex already ends with a trailing /, how should it be 
-        # handled?
-        suffix = '(?:$|/)' if directory else ''
+        # If splitting by directory and the regex already includes a trailing 
+        # separator, there is no need to modify the regex, otherwise ensure the 
+        # pattern only matches if it's exact or followed by a directory separator
+        modified = directory and not self.regex.endswith(os.path.sep)
+        suffix = '(?:$|/)' if modified else ''
         regex = '^' + self.regex + suffix
         match, fields = self._parse(path, regex)
-        # TODO: start is using the replaced string, not the section of the 
-        # original path
-        start = match.group(0)  # Extract the trailing / if added
-        # TODO: No guarantee the length is correct with path separators replaced
+        start = match.group(0)
+        # Extract the remainder before modifying the start path - this is 
+        # because if splitting on the directory, the relative remainder should 
+        # not include the leading separator.
         end = path[len(start):]
-        if start.endswith('/'):
+        # Only strip the captured separator if it was added to the pattern
+        # Note, it's safe to use '/' instead of os.path.sep as the match is done 
+        # against a separator replaced version of the path
+        if modified and start.endswith('/'):
             start = start[:-1]
         return start, fields, end
 
