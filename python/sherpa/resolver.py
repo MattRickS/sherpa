@@ -82,14 +82,20 @@ class PathResolver(object):
     def extract_closest_template(self, path, directory=True):
         """
         Finds the template that extracts the greatest number of directories in 
-        the path and returns the Template, matched string, matched fields and 
-        the relative remainder of the path
+        the path.
         
         :param str  path: 
         :param bool directory:  If True, partial matches are only considered if 
                                 they match a full directory and not a partial 
-                                filename match
+                                folder/filename match. The returned relative 
+                                path will strip any leading path separator.
         :rtype: tuple[Template, str, dict, str]
+        :return: Tuple of (
+            Template,
+            matched section of path,
+            matched token fields,
+            relative remainder of path
+        )
         """
         matches = {}
         for template in self._templates.values():
