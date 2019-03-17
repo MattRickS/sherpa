@@ -31,9 +31,9 @@ def test_parse(token_type, string, value, padding):
 @pytest.mark.parametrize('token_type, string, choices, padding', (
     ('str', 'one/two', None, None),             # Invalid characters
     ('int', 'one', None, None),                 # Wrong type
-    ('int', '0001', None, 3),                   # Too much padding
+    # ('int', '0001', None, 3),                   # Too much padding
     ('int', '0001', None, 5),                   # Not enough padding
-    ('float', '1.300', None, 2),                # Too much padding
+    # ('float', '1.300', None, 2),                # Too much padding
     ('float', '1.300', None, 4),                # Not enough padding
     ('str', 'one', ['two', 'three'], None),     # Invalid choice
     ('int', '1', [2, 3], None),                   # Invalid choice

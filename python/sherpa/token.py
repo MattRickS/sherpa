@@ -173,9 +173,9 @@ class FloatToken(Token):
         parsed = super(FloatToken, self).parse(token)
         # Float padding applies to the trailing numbers; only validate after
         # the regex has confirmed it meets the format
-        if self._padding and len(token.split('.')[1]) != self._padding:
+        if self._padding and len(token.split('.')[1]) < self._padding:
             raise ParseError(
-                'Token does not match padding ({padding}) for {self}: {value}'.format(
+                'Token does not match padding ({padding}) for {self}: {value!r}'.format(
                     padding=self._padding, self=self, value=token
                 )
             )
@@ -212,9 +212,9 @@ class IntToken(Token):
         :param str  token:
         :return:
         """
-        if self._padding and len(token) != self._padding:
+        if self._padding and len(token) < self._padding:
             raise ParseError(
-                'Token does not match padding ({padding}) for {self}: {value}'.format(
+                'Token does not match padding ({padding}) for {self}: {value!r}'.format(
                     padding=self._padding, self=self, value=token
                 )
             )
