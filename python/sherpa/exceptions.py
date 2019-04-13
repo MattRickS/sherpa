@@ -1,10 +1,10 @@
-class PathResolverError(Exception):
-    """ Generic base exception for all PathResolver errors """
+class TemplateResolverError(Exception):
+    """ Generic base exception for all TemplateResolver errors """
 
 
-class FormatError(PathResolverError):
+class FormatError(TemplateResolverError):
     """ Failure to format a value """
 
 
-class ParseError(PathResolverError):
+class ParseError(TemplateResolverError):
     """ Failure to parse a value """

@@ -2,25 +2,25 @@ import os
 import yaml
 
 from sherpa import constants
-from sherpa.exceptions import ParseError, PathResolverError
+from sherpa.exceptions import ParseError, TemplateResolverError
 from sherpa.pathtemplate import PathTemplate
 from sherpa.token import Token
 
 
-class PathResolver(object):
+class TemplateResolver(object):
     @classmethod
     def from_environment(cls):
         """
         Reads the environment variable for a file to load the configuration from
 
-        :raise PathResolverError: if the environment variable is not set or
+        :raise TemplateResolverError: if the environment variable is not set or
                                   set to a non-existent file
-        :rtype: PathResolver
+        :rtype: TemplateResolver
         """
         path = os.getenv(constants.ENV_VAR)
         if not path or not os.path.exists(path):
-            raise PathResolverError(
-                'Invalid environment path for pathresolver configuration: '
+            raise TemplateResolverError(
+                'Invalid environment path for TemplateResolver configuration: '
                 '{}={}'.format(constants.ENV_VAR, path)
             )
         return cls.from_file(path)
@@ -29,7 +29,7 @@ class PathResolver(object):
     def from_file(cls, filepath):
         """
         :param str  filepath:
-        :rtype: PathResolver
+        :rtype: TemplateResolver
         """
         with open(filepath) as f:
             config = yaml.load(f)

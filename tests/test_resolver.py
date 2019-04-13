@@ -4,7 +4,7 @@ import shutil
 import pytest
 
 from sherpa import constants
-from sherpa.resolver import PathResolver
+from sherpa.resolver import TemplateResolver
 
 
 @pytest.fixture(scope='module')
@@ -221,7 +221,7 @@ class MockFilesystem(object):
         self.root = root
         self.filepaths = {os.path.normpath(os.path.join(root, path)): fields
                           for path, fields in relative_directories.items()}
-        self.pathresolver = PathResolver(cfg)
+        self.resolver = TemplateResolver(cfg)
 
     def create(self):
         for filepath in self.filepaths:
@@ -250,23 +250,23 @@ def mock_filesystem(mock_directory):
 
 def test_from_environment(mock_config):
     os.environ[constants.ENV_VAR] = mock_config
-    assert PathResolver.from_environment()
+    assert TemplateResolver.from_environment()
 
 
 def test_from_file(mock_config):
-    assert PathResolver.from_file(mock_config)
+    assert TemplateResolver.from_file(mock_config)
 
 
 def test_parse_path(mock_filesystem):
     for filepath, data in mock_filesystem.filepaths.items():
-        template, fields = mock_filesystem.pathresolver.parse_path(filepath)
+        template, fields = mock_filesystem.resolver.parse_path(filepath)
         assert template.name == data['template']
         assert fields == data['fields']
 
 
 def test_format_path(mock_filesystem):
     for filepath, data in mock_filesystem.filepaths.items():
-        template = mock_filesystem.pathresolver.get_pathtemplate(data['template'])
+        template = mock_filesystem.resolver.get_pathtemplate(data['template'])
         path = template.format(data['fields']).replace('/', os.path.sep)
         assert path == filepath
 
@@ -277,7 +277,7 @@ def test_format_path(mock_filesystem):
     ('entity', {'storage': 'active', 'category': 'categoryA', 'entity': 'entityA'}),
 ))
 def test_paths(mock_filesystem, template_name, fields):
-    template = mock_filesystem.pathresolver.get_pathtemplate(template_name)
+    template = mock_filesystem.resolver.get_pathtemplate(template_name)
     paths = [f for f, d in mock_filesystem.filepaths.items() if template_name == d['template']]
     assert template.paths(fields) == paths
 
@@ -288,7 +288,7 @@ def test_paths(mock_filesystem, template_name, fields):
     ('version', {'storage': 'active', 'category': 'categoryA', 'entity': 'entityB', 'publish_type': 'spam'}, [1]),
 ))
 def test_values_from_paths(mock_filesystem, field, fields, values):
-    template = mock_filesystem.pathresolver.get_pathtemplate('publish')
+    template = mock_filesystem.resolver.get_pathtemplate('publish')
     assert list(template.values_from_paths(field, fields)) == values
 
 
@@ -298,7 +298,7 @@ def test_values_from_paths(mock_filesystem, field, fields, values):
     ('/projects/path/to/something.ext', False, 'sequence', '/projects/path/to/something', '.ext'),
 ))
 def test_extract_closest_template(path, directory, template, start, end):
-    pr = PathResolver({
+    pr = TemplateResolver({
         'tokens': {
             'project': 'str',
             'storage': 'str',
