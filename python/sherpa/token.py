@@ -218,16 +218,19 @@ class StringToken(Token):
 class SequenceToken(IntToken):
     """
     Can be formatted with common padding string values, eg, #### or %04d, but
-    otherwise is treated as an IntToken. Padding defaults to 1 for a
-    SequenceToken.
+    otherwise is treated as an IntToken.
     """
 
     def __init__(self, name, default=None, choices=None, padding=None):
         super(SequenceToken, self).__init__(name, default=default, choices=choices, padding=padding)
 
+    @property
+    def regex(self):
+        padding = get_padding_regex(self._padding) if self._padding else '+'
+        return '[\d#]{}|%{}d'.format(padding, '%02d' % self._padding[0] if self._padding else '\d+')
+
     def format(self, value):
-        return value if self.is_sequence_pattern(value) else super(SequenceToken, self).format(
-            value)
+        return value if self.is_sequence_pattern(str(value)) else super(SequenceToken, self).format(value)
 
     def parse(self, token):
         return token if self.is_sequence_pattern(token) else super(SequenceToken, self).parse(token)
@@ -298,6 +301,8 @@ def format_padding(string, padding, char='0', left=True):
 
 
 def fits_padding(size, padding):
+    if padding is None:
+        return True
     lo, hi = padding
     return lo <= size <= hi if hi else lo <= size
 

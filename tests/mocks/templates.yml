@@ -16,6 +16,9 @@ tokens:
     padding: 3
   extension: str
   variant: str
+  seq:
+    type: sequence
+    padding: 3+
 
 names:
   variant_entity: '{entity}_{variant}'
@@ -30,3 +33,4 @@ templates:
   publish: '{@task}/publishes/{publish_type}/v{version}/{entity}_{publish_type}_v{version}.{extension}'
 
   filename: '{#variant_entity}.{extension}'
+  sequence: '/path/to/{seq}.{extension}'
