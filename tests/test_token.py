@@ -71,6 +71,7 @@ def test_parse_fail(token_config, string):
 
 @pytest.mark.parametrize('token_config, value, expected', (
     ({constants.TOKEN_TYPE: 'str'}, 'one', 'one'),
+    ({constants.TOKEN_TYPE: 'str'}, 1, '1'),
     ({constants.TOKEN_TYPE: 'int'}, 1, '1'),
     ({constants.TOKEN_TYPE: 'float'}, 1, '1.0'),
     ({constants.TOKEN_TYPE: 'sequence', 'padding': 3}, 1, '001'),
@@ -91,9 +92,10 @@ def test_format(token_config, value, expected):
 
 
 @pytest.mark.parametrize('token_config, value', (
-    ({constants.TOKEN_TYPE: 'int'}, 'one'),
-    ({constants.TOKEN_TYPE: 'str', 'padding': 3}, 'ab'),  # Not enough padding
-    ({constants.TOKEN_TYPE: 'str', 'numbers': False}, '1'),
+    ({constants.TOKEN_TYPE: 'int'}, 'one'),                  # Wrong type
+    ({constants.TOKEN_TYPE: 'str'}, 'one/two'),              # Invalid characters
+    ({constants.TOKEN_TYPE: 'str', 'numbers': False}, '1'),  # Invalid characters
+    ({constants.TOKEN_TYPE: 'str', 'padding': 3}, 'ab'),     # Not enough padding
 ))
 def test_format_fail(token_config, value):
     token = get_token('name', token_config)

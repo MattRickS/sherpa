@@ -193,7 +193,7 @@ class StringToken(Token):
             if self._numbers:
                 regex = '[^{}]'.format(constants.STRING_BLACKLIST)
             else:
-                regex = '[^{}0-9]'.format(constants.STRING_BLACKLIST)
+                regex = '[^{}{}]'.format(constants.STRING_BLACKLIST, constants.NUMBER_PATTERN)
             regex += get_padding_regex(padding) if padding else '+'
         self._regex = regex
         # Initialise regex before calling super as the init parses the default/choices
@@ -216,10 +216,6 @@ class StringToken(Token):
 
     def format(self, value):
         string = super(StringToken, self).format(value)
-        if not self._numbers and any(char.isdigit() for char in string):
-            raise FormatError('Token {name!r} does not accept numbers: {value}'.format(
-                name=self._name, value=string
-            ))
         # String cannot add padding
         if not fits_padding(len(string), self._padding):
             raise FormatError('Value {value!r} does not fit padding: {padding}'.format(
@@ -233,6 +229,11 @@ class StringToken(Token):
             string = string[0].lower() + string[1:]
         elif self._case == Case.UpperCamel:
             string = string[0].upper() + string[1:]
+        # Catch any blacklisted characters, ensure we match the whole string
+        if not re.match('^' + self.regex + '$', string):
+            raise FormatError('Formatted string {value!r} does not match regex: {regex}'.format(
+                value=string, regex=self.regex
+            ))
         return string
 
 
@@ -396,17 +397,15 @@ def get_token(token_name, config):
 
 
 if __name__ == '__main__':
-    print StringToken('one', case=Case.Lower, numbers=False).format('1')
-
-    # for case in (Case.Lower, Case.Upper, Case.LowerCamel, Case.UpperCamel):
-    #     for numbers in (True, False):
-    #         for padding in (None, (3, 0), (1, 3), (3, 3)):
-    #             print('-' * 20)
-    #             print(case, numbers, padding)
-    #             token = StringToken('one', case=case, padding=padding, numbers=numbers)
-    #             print(token.regex)
-    #             for val in ('oneTwo', 'three', 'one1', 'THREE'):
-    #                 try:
-    #                     print('Parsed:', token.parse(val))
-    #                 except ParseError:
-    #                     print('Cannot parse: {!r}'.format(val))
+    for case in (Case.Lower, Case.Upper, Case.LowerCamel, Case.UpperCamel):
+        for numbers in (True, False):
+            for padding in (None, (3, 0), (1, 3), (3, 3)):
+                print('-' * 20)
+                print(case, numbers, padding)
+                token = StringToken('one', case=case, padding=padding, numbers=numbers)
+                print(token.regex)
+                for val in ('oneTwo', 'three', 'one1', 'THREE'):
+                    try:
+                        print('Parsed:', token.parse(val))
+                    except ParseError:
+                        print('Cannot parse: {!r}'.format(val))
