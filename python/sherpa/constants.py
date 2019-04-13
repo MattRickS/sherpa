@@ -1,11 +1,14 @@
 import re
 
-MATCH_PATTERN = re.compile('{(@)?(\w+)}')
+REF_NAMETEMPLATE = '%'
+REF_PATHTEMPLATE = '@'
+MATCH_PATTERN = re.compile('{([%s%s])?(\w+)}' % (REF_PATHTEMPLATE, REF_NAMETEMPLATE))
 
 ENV_VAR = 'PATHRESOLVER_CONFIG'
 
-TEMPLATE_KEY = 'templates'
-TOKEN_KEY = 'tokens'
+KEY_NAMETEMPLATE = 'names'
+KEY_PATHTEMPLATE = 'templates'
+KEY_TOKEN = 'tokens'
 TOKEN_TYPE = 'type'
 
 WILDCARD = '*'

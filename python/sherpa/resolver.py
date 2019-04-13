@@ -3,7 +3,7 @@ import yaml
 
 from sherpa import constants
 from sherpa.exceptions import ParseError, PathResolverError
-from sherpa.template import Template
+from sherpa.pathtemplate import PathTemplate
 from sherpa.token import Token
 
 
@@ -39,28 +39,34 @@ class PathResolver(object):
         """
         :param dict[str, dict]  config:
         """
-        self._template_config = config[constants.TEMPLATE_KEY]
-        self._token_config = config[constants.TOKEN_KEY]
-
+        self._config = config
         self._templates = {}
         self._tokens = {}
 
         # Ensure tokens are loaded and valid before loading templates
-        for name in self._token_config:
+        for name in self._config[constants.KEY_TOKEN]:
             self._load_token(name)
 
-        for name in self._template_config:
-            # Templates can reference other templates which recursively load,
-            # avoid reloading already evaluated templates
-            if name not in self._templates:
-                self._load_template(name)
+        for template_type in (constants.KEY_NAMETEMPLATE, constants.KEY_PATHTEMPLATE):
+            for name in self._config.get(template_type, ()):
+                # Templates can reference other templates which recursively load,
+                # avoid reloading already evaluated templates
+                if name not in self._templates.get(template_type, ()):
+                    self._load_template(template_type, name)
 
     @property
-    def templates(self):
+    def nametemplates(self):
         """
         :rtype: dict[str, Template]
         """
-        return self._templates.copy()
+        return self._templates.get(constants.KEY_NAMETEMPLATE, {}).copy()
+
+    @property
+    def pathtemplates(self):
+        """
+        :rtype: dict[str, PathTemplate]
+        """
+        return self._templates.get(constants.KEY_PATHTEMPLATE, {}).copy()
 
     @property
     def tokens(self):
@@ -79,7 +85,7 @@ class PathResolver(object):
         template, fields = self.parse_path(path)
         return fields
 
-    def extract_closest_template(self, path, directory=True):
+    def extract_closest_pathtemplate(self, path, directory=True):
         """
         Finds the template that extracts the greatest number of directories in 
         the path.
@@ -98,7 +104,7 @@ class PathResolver(object):
         )
         """
         matches = {}
-        for template in self._templates.values():
+        for template in self._templates.get(constants.KEY_PATHTEMPLATE, {}).values():
             try:
                 match_path, fields, relative = template.extract(path, directory=directory)
                 matches[relative.count('/')] = (template, match_path, fields, relative)
@@ -106,16 +112,19 @@ class PathResolver(object):
                 continue
         return matches[min(matches)]
 
-    def get_template(self, template_name):
+    def get_nametemplate(self, template_name):
         """
         :param str  template_name:
         :rtype: Template
         """
-        template = self._templates.get(template_name)
-        # Templates can be recursive, load on demand
-        if template is None:
-            template = self._load_template(template_name)
-        return template
+        return self._get_template(constants.KEY_NAMETEMPLATE, template_name)
+
+    def get_pathtemplate(self, template_name):
+        """
+        :param str  template_name:
+        :rtype: Template
+        """
+        return self._get_template(constants.KEY_PATHTEMPLATE, template_name)
 
     def get_token(self, token_name):
         """
@@ -130,7 +139,7 @@ class PathResolver(object):
         :rtype: tuple[Template, dict]
         :return: Tuple of (matching template object, dictionary of parsed fields)
         """
-        for template in self._templates.values():
+        for template in self._templates.get(constants.KEY_PATHTEMPLATE, {}).values():
             try:
                 fields = template.parse(path)
                 return template, fields
@@ -144,7 +153,7 @@ class PathResolver(object):
         :param dict fields:
         :rtype: list[str]
         """
-        template = self._templates[template_name]
+        template = self._get_template(constants.KEY_PATHTEMPLATE, template_name)
         return template.paths(fields)
 
     def template_from_path(self, path):
@@ -157,36 +166,48 @@ class PathResolver(object):
         template, fields = self.parse_path(path)
         return template
 
-    def _load_template(self, template_name):
+    def _get_template(self, template_type, template_name):
+        template = self._templates.get(template_type, {}).get(template_name)
+        # Templates can be recursive, load on demand
+        if template is None:
+            template = self._load_template(template_type, template_name)
+        return template
+
+    def _load_template(self, template_type, template_name):
         """
+        :param str  template_type:
         :param str  template_name:
         :rtype: Template
         """
-        template_string = self._template_config[template_name]
+        template_string = self._config[template_type][template_name]
 
         tokens = {}
         parent = None
         relatives = []
 
         for match in constants.MATCH_PATTERN.finditer(template_string):
-            is_template, token_name = match.groups()
-            if is_template:
+            reference_type, token_name = match.groups()
+            if reference_type == constants.REF_PATHTEMPLATE:
                 # Extract parent and relative Templates by name
-                template = self.get_template(token_name)
+                template = self._get_template(template_type, token_name)
                 if match.start() == 0:
                     parent = template
                 else:
                     relatives.append(template)
+            elif reference_type == constants.REF_NAMETEMPLATE:
+                # Extract parent and relative Templates by name
+                template = self._get_template(template_type, token_name)
+                relatives.append(template)
             else:
                 # Extract local tokens, validate against loaded Tokens
                 tokens[token_name] = self._tokens[token_name]
-        template = Template(template_name,
-                            template_string,
-                            parent=parent,
-                            relatives=relatives,
-                            tokens=tokens)
+        template = PathTemplate(template_name,
+                                template_string,
+                                parent=parent,
+                                relatives=relatives,
+                                tokens=tokens)
 
-        self._templates[template_name] = template
+        self._templates.setdefault(template_type, {})[template_name] = template
         return template
 
     def _load_token(self, token_name):
@@ -196,7 +217,7 @@ class PathResolver(object):
         """
         # Config is allowed to define a shorthand {name: type}, ensure it's in
         # dictionary format so that the keywords can be expanded to Token's init
-        token_config = self._token_config[token_name]
+        token_config = self._config[constants.KEY_TOKEN][token_name]
         if not isinstance(token_config, dict):
             token_config = {constants.TOKEN_TYPE: token_config}
 

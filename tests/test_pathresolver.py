@@ -20,7 +20,7 @@ def mock_config(mock_directory):
 class MockFilesystem(object):
     def __init__(self, root):
         cfg = {
-            constants.TOKEN_KEY: {
+            constants.KEY_TOKEN: {
                 'root': 'str',
                 'storage': {
                     'type': 'str',
@@ -49,7 +49,7 @@ class MockFilesystem(object):
                     'padding': 3
                 }
             },
-            constants.TEMPLATE_KEY: {
+            constants.KEY_PATHTEMPLATE: {
                 'root': root,
                 'project': '{@root}/{project}',
                 'storage': '{@project}/{storage}',
@@ -266,7 +266,7 @@ def test_parse_path(mock_filesystem):
 
 def test_format_path(mock_filesystem):
     for filepath, data in mock_filesystem.filepaths.items():
-        template = mock_filesystem.pathresolver.get_template(data['template'])
+        template = mock_filesystem.pathresolver.get_pathtemplate(data['template'])
         path = template.format(data['fields']).replace('/', os.path.sep)
         assert path == filepath
 
@@ -277,7 +277,7 @@ def test_format_path(mock_filesystem):
     ('entity', {'storage': 'active', 'category': 'categoryA', 'entity': 'entityA'}),
 ))
 def test_paths(mock_filesystem, template_name, fields):
-    template = mock_filesystem.pathresolver.get_template(template_name)
+    template = mock_filesystem.pathresolver.get_pathtemplate(template_name)
     paths = [f for f, d in mock_filesystem.filepaths.items() if template_name == d['template']]
     assert template.paths(fields) == paths
 
@@ -288,7 +288,7 @@ def test_paths(mock_filesystem, template_name, fields):
     ('version', {'storage': 'active', 'category': 'categoryA', 'entity': 'entityB', 'publish_type': 'spam'}, [1]),
 ))
 def test_values_from_paths(mock_filesystem, field, fields, values):
-    template = mock_filesystem.pathresolver.get_template('publish')
+    template = mock_filesystem.pathresolver.get_pathtemplate('publish')
     assert list(template.values_from_paths(field, fields)) == values
 
 
@@ -311,8 +311,8 @@ def test_extract_closest_template(path, directory, template, start, end):
             'sequence': '{@storage}/{sequence}',
         }
     })
-    results = pr.extract_closest_template(path, directory=directory)
-    template = pr.get_template(template)
+    results = pr.extract_closest_pathtemplate(path, directory=directory)
+    template = pr.get_pathtemplate(template)
     assert results[0] == template
     assert results[1] == start
     assert results[3] == end

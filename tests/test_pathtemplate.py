@@ -3,7 +3,7 @@ from collections import namedtuple
 import pytest
 
 from sherpa.token import Token
-from sherpa.template import Template
+from sherpa.pathtemplate import PathTemplate
 
 
 MockTemplate = namedtuple('MockTemplate', 'template parent pattern relatives tokens path fields')
@@ -27,7 +27,7 @@ def mock_templates():
 
     pattern = '/scratch/{one}'
     tokens_a = get_tokens(('one', ))
-    template_a = Template('templateA', pattern, tokens=tokens_a)
+    template_a = PathTemplate('templateA', pattern, tokens=tokens_a)
     mta = MockTemplate(template_a,
                        parent=None,
                        pattern=pattern,
@@ -38,7 +38,7 @@ def mock_templates():
 
     pattern_b = '{@templateA}/{two}/{two}'
     tokens_b = get_tokens(('two', ))
-    template_b = Template('templateB', pattern_b, parent=template_a, tokens=tokens_b.copy())
+    template_b = PathTemplate('templateB', pattern_b, parent=template_a, tokens=tokens_b.copy())
     tokens_b.update(tokens_a)
     mtb = MockTemplate(template_b,
                        parent=template_a,
@@ -50,7 +50,7 @@ def mock_templates():
 
     pattern_c = 'relative/{a}/{b}'
     tokens_c = get_tokens(('a', 'b'))
-    template_c = Template('templateC', pattern_c, tokens=tokens_c)
+    template_c = PathTemplate('templateC', pattern_c, tokens=tokens_c)
     mtc = MockTemplate(template_c,
                        parent=None,
                        pattern=pattern_c,
@@ -61,7 +61,7 @@ def mock_templates():
 
     pattern_d = '/scratch/{f1}/{@templateC}'
     tokens_d = get_tokens(('f1', ))
-    template_d = Template('templateD', pattern_d, relatives=[template_c], tokens=tokens_d.copy())
+    template_d = PathTemplate('templateD', pattern_d, relatives=[template_c], tokens=tokens_d.copy())
     tokens_d.update(tokens_c)
     mtd = MockTemplate(template_d,
                        parent=None,
@@ -114,7 +114,7 @@ def test_extract(mock_templates, extra='sub/path'):
 def test_extract_specific():
     from sherpa.token import StringToken
     project_token = StringToken('project')
-    project = Template('project', '/projects/{project}', tokens={'project': project_token})
+    project = PathTemplate('project', '/projects/{project}', tokens={'project': project_token})
     assert project.extract('/projects/path') == ('/projects/path', {'project': 'path'}, '')
     assert project.extract('/projects/path/to/something.ext') == ('/projects/path', {'project': 'path'}, 'to/something.ext')
     assert project.extract('/projects/path/to/something.ext', directory=False) == ('/projects/path', {'project': 'path'}, '/to/something.ext')
