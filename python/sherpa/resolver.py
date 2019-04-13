@@ -5,7 +5,7 @@ from sherpa import constants
 from sherpa.exceptions import ParseError, TemplateResolverError
 from sherpa.pathtemplate import PathTemplate
 from sherpa.template import Template
-from sherpa.token import Token
+from sherpa import token
 
 
 class TemplateResolver(object):
@@ -72,7 +72,7 @@ class TemplateResolver(object):
     @property
     def tokens(self):
         """
-        :rtype: dict[str, Token]
+        :rtype: dict[str, token.Token]
         """
         return self._tokens.copy()
 
@@ -125,8 +125,8 @@ class TemplateResolver(object):
         except KeyError:
             if not allow_tokens:
                 raise
-            token = self._tokens[template_name]
-            template = Template.from_token(token)
+            token_obj = self._tokens[template_name]
+            template = Template.from_token(token_obj)
         return template
 
     def get_pathtemplate(self, template_name):
@@ -139,7 +139,7 @@ class TemplateResolver(object):
     def get_token(self, token_name):
         """
         :param str  token_name:
-        :rtype: Token
+        :rtype: token.Token
         """
         return self._tokens[token_name]
 
@@ -230,7 +230,7 @@ class TemplateResolver(object):
     def _load_token(self, token_name):
         """
         :param str  token_name:
-        :rtype: Token
+        :rtype: token.Token
         """
         # Config is allowed to define a shorthand {name: type}, ensure it's in
         # dictionary format so that the keywords can be expanded to Token's init
@@ -238,15 +238,6 @@ class TemplateResolver(object):
         if not isinstance(token_config, dict):
             token_config = {constants.TOKEN_TYPE: token_config}
 
-        # Pop the type key so that it's not passed to Token's init
-        token_type = token_config.pop(constants.TOKEN_TYPE, 'str')
-        cls = Token.get_type(token_type)
-        if cls is None:
-            raise ParseError('Unknown token type for {!r}: {}'.format(
-                token_name, token_type
-            ))
-
-        # Let Token validate itself, will raise any errors
-        token = cls(token_name, **token_config)
-        self._tokens[token_name] = token
-        return token
+        token_obj = token.get_token(token_name, token_config)
+        self._tokens[token_name] = token_obj
+        return token_obj

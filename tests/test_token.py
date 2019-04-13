@@ -1,6 +1,7 @@
 import pytest
 
-from sherpa.token import Token, IntToken, StringToken, FloatToken
+from sherpa import constants
+from sherpa.token import get_token, IntToken, StringToken, FloatToken
 from sherpa.exceptions import ParseError
 
 
@@ -9,39 +10,51 @@ from sherpa.exceptions import ParseError
     ('int', IntToken),
     ('str', StringToken),
 ))
-def test_get_type(string_type, cls):
-    assert Token.get_type(string_type) == cls
+def test_get_config(string_type, cls):
+    assert get_token('name', {constants.TOKEN_TYPE: string_type}).__class__ == cls
 
 
-@pytest.mark.parametrize('token_type, string, value, padding', (
-    ('str', 'one', 'one', None),
-    ('int', '1', 1, None),
-    ('int', '0001', 1, None),
-    ('int', '0001', 1, 4),
-    ('float', '1.3', 1.3, None),
-    ('float', '1.30000', 1.3, None),
-    ('float', '1.30000', 1.3, 5),
+@pytest.mark.parametrize('token_config, string, expected', (
+    ({constants.TOKEN_TYPE: 'str', 'padding': None}, 'one', 'one'),
+    ({constants.TOKEN_TYPE: 'str', 'padding': '3'}, 'abc', 'abc'),
+    ({constants.TOKEN_TYPE: 'str', 'padding': '3+'}, 'abcde', 'abcde'),
+    ({constants.TOKEN_TYPE: 'str', 'padding': '+3'}, 'ab', 'ab'),
+    ({constants.TOKEN_TYPE: 'int', 'padding': None}, '1', 1),
+    ({constants.TOKEN_TYPE: 'int', 'padding': None}, '0001', 1),
+    ({constants.TOKEN_TYPE: 'int', 'padding': 4}, '0001', 1),
+    ({constants.TOKEN_TYPE: 'float', 'padding': None}, '1.3', 1.3),
+    ({constants.TOKEN_TYPE: 'float', 'padding': None}, '1.30000', 1.3),
+    ({constants.TOKEN_TYPE: 'float', 'padding': 5}, '1.30000', 1.3),
+    ({constants.TOKEN_TYPE: 'str', 'case': 'lower'}, 'abc', 'abc'),
+    ({constants.TOKEN_TYPE: 'str', 'case': 'UPPER'}, 'ABC', 'ABC'),
+    ({constants.TOKEN_TYPE: 'str', 'case': 'lowerCamel'}, 'abcDef', 'abcDef'),
+    ({constants.TOKEN_TYPE: 'str', 'case': 'UpperCamel'}, 'AbcDef', 'AbcDef'),
+    ({constants.TOKEN_TYPE: 'str', 'case': 'lower', 'numbers': True}, 'abc1', 'abc1'),
 ))
-def test_parse(token_type, string, value, padding):
-    cls = Token.get_type(token_type)
-    token = cls('test', padding=padding)
-    assert token.parse(string) == value
+def test_parse(token_config, string, expected):
+    token = get_token('name', token_config)
+    assert token.parse(string) == expected
 
 
-@pytest.mark.parametrize('token_type, string, choices, padding', (
-    ('str', 'one/two', None, None),             # Invalid characters
-    ('int', 'one', None, None),                 # Wrong type
-    # ('int', '0001', None, 3),                   # Too much padding
-    ('int', '0001', None, 5),                   # Not enough padding
-    # ('float', '1.300', None, 2),                # Too much padding
-    ('float', '1.300', None, 4),                # Not enough padding
-    ('str', 'one', ['two', 'three'], None),     # Invalid choice
-    ('int', '1', [2, 3], None),                   # Invalid choice
-    ('float', '1.0', [2.0, 3.0], None),           # Invalid choice
+@pytest.mark.parametrize('token_config, string', (
+    ({constants.TOKEN_TYPE: 'str'}, 'one/two'),                           # Invalid characters
+    ({constants.TOKEN_TYPE: 'int'}, 'one'),                               # Wrong type
+    ({constants.TOKEN_TYPE: 'int', 'padding': 3}, '0001'),                # Too much padding
+    ({constants.TOKEN_TYPE: 'int', 'padding': 5}, '0001'),                # Not enough padding
+    ({constants.TOKEN_TYPE: 'float', 'padding': 2}, '1.300'),             # Too much padding
+    ({constants.TOKEN_TYPE: 'float', 'padding': 4}, '1.300'),             # Not enough padding
+    ({constants.TOKEN_TYPE: 'str', 'choices': ['two', 'three']}, 'one'),  # Invalid choice
+    ({constants.TOKEN_TYPE: 'int', 'choices': [2, 3]}, '1'),              # Invalid choice
+    ({constants.TOKEN_TYPE: 'float', 'choices': [2.0, 3.0]}, '1.0'),      # Invalid choice
+    ({constants.TOKEN_TYPE: 'str', 'case': 'lower'}, 'aBc'),              # Invalid case
+    ({constants.TOKEN_TYPE: 'str', 'case': 'UPPER'}, 'aBc'),              # Invalid case
+    ({constants.TOKEN_TYPE: 'str', 'case': 'lowerCamel'}, 'Abc'),         # Invalid case
+    ({constants.TOKEN_TYPE: 'str', 'case': 'UpperCamel'}, 'aBc'),         # Invalid case
+    ({constants.TOKEN_TYPE: 'str', 'case': 'lower'}, 'abc1'),             # Numbers disallowed
+    ({constants.TOKEN_TYPE: 'str', 'case': 'lower', 'numbers': True}, '1abc'),  # Leading number
 ))
-def test_parse_fail(token_type, string, choices, padding):
-    cls = Token.get_type(token_type)
-    token = cls('test', choices=choices, padding=padding)
+def test_parse_fail(token_config, string):
+    token = get_token('name', token_config)
     with pytest.raises(ParseError):
         token.parse(string)
 
@@ -61,7 +74,7 @@ def test_name(cls, name):
     (StringToken, 'test', 'one', 'one'),
 ))
 def test_default(cls, name, default, value):
-    assert cls(name, default).default == value
+    assert cls(name, default=default).default == value
 
 
 @pytest.mark.parametrize('cls, name, choices, values', (
@@ -73,10 +86,12 @@ def test_choices(cls, name, choices, values):
     assert cls(name, choices=choices).choices == values
 
 
-@pytest.mark.parametrize('cls, name, padding', (
-    (FloatToken, 'test', 1),
-    (IntToken, 'test', 2),
-    (StringToken, 'test', 3),
+@pytest.mark.parametrize('padding, expected', (
+    ('1', (1, 1)),
+    ('3+', (3, 0)),
+    ('+3', (1, 3)),
+    (3, (3, 3)),
 ))
-def test_padding(cls, name, padding):
-    assert cls(name, padding=padding).padding == padding
+def test_padding(padding, expected):
+    token = get_token('name', {constants.TOKEN_TYPE: 'str', 'padding': padding})
+    assert token.padding == expected

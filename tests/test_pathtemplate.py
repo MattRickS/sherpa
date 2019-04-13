@@ -2,7 +2,7 @@ from collections import namedtuple
 
 import pytest
 
-from sherpa.token import Token
+from sherpa import token
 from sherpa.pathtemplate import PathTemplate
 
 
@@ -12,15 +12,15 @@ MockTemplate = namedtuple('MockTemplate', 'template parent pattern relatives tok
 @pytest.fixture(scope='module')
 def mock_templates():
     token_config = {
-        'one': 'int',
-        'two': 'int',
-        'a': 'str',
-        'b': 'str',
-        'c': 'str',
-        'f1': 'float'
+        'one': {'type': 'int'},
+        'two': {'type': 'int'},
+        'a': {'type': 'str'},
+        'b': {'type': 'str'},
+        'c': {'type': 'str'},
+        'f1': {'type': 'float'}
     }
-    tokens = {name: Token.get_type(token_type)(name)
-              for name, token_type in token_config.items()}
+    tokens = {name: token.get_token(name, config)
+              for name, config in token_config.items()}
 
     def get_tokens(token_names):
         return {k: v for k, v in tokens.items() if k in token_names}
