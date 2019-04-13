@@ -1,8 +1,8 @@
 import pytest
 
 from sherpa import constants
-from sherpa.token import get_token, IntToken, StringToken, FloatToken
-from sherpa.exceptions import ParseError
+from sherpa.token import get_token, IntToken, StringToken, FloatToken, Case
+from sherpa.exceptions import ParseError, FormatError
 
 
 @pytest.mark.parametrize('string_type, cls', (
@@ -67,6 +67,39 @@ def test_parse_fail(token_config, string):
     token = get_token('name', token_config)
     with pytest.raises(ParseError):
         token.parse(string)
+
+
+@pytest.mark.parametrize('token_config, value, expected', (
+    ({constants.TOKEN_TYPE: 'str'}, 'one', 'one'),
+    ({constants.TOKEN_TYPE: 'int'}, 1, '1'),
+    ({constants.TOKEN_TYPE: 'float'}, 1, '1.0'),
+    ({constants.TOKEN_TYPE: 'sequence', 'padding': 3}, 1, '001'),
+    ({constants.TOKEN_TYPE: 'float', 'padding': '3'}, 1, '1.000'),
+    ({constants.TOKEN_TYPE: 'int', 'padding': '3'}, 1, '001'),
+    ({constants.TOKEN_TYPE: 'int'}, constants.WILDCARD, constants.WILDCARD),
+    ({constants.TOKEN_TYPE: 'int', 'padding': 3}, constants.WILDCARD, constants.WILDCARD_ONE * 3),
+    ({constants.TOKEN_TYPE: 'str', 'case': Case.Lower}, 'ab', 'ab'),
+    ({constants.TOKEN_TYPE: 'str', 'case': Case.Lower}, 'AB', 'ab'),
+    ({constants.TOKEN_TYPE: 'str', 'case': Case.Upper}, 'AB', 'AB'),
+    ({constants.TOKEN_TYPE: 'str', 'case': Case.Upper}, 'ab', 'AB'),
+    ({constants.TOKEN_TYPE: 'str', 'case': Case.UpperCamel}, 'ab', 'Ab'),
+    ({constants.TOKEN_TYPE: 'str', 'case': Case.LowerCamel}, 'Ab', 'ab'),
+))
+def test_format(token_config, value, expected):
+    token = get_token('name', token_config)
+    assert token.format(value) == expected
+
+
+@pytest.mark.parametrize('token_config, value', (
+    ({constants.TOKEN_TYPE: 'int'}, 'one'),
+    ({constants.TOKEN_TYPE: 'str', 'padding': 3}, 'ab'),  # Not enough padding
+    # TODO:
+    # ({constants.TOKEN_TYPE: 'str', 'numbers': False}, '1'),
+))
+def test_format_fail(token_config, value):
+    token = get_token('name', token_config)
+    with pytest.raises(FormatError):
+        token.format(value)
 
 
 @pytest.mark.parametrize('cls, name', (

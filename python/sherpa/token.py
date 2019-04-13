@@ -214,6 +214,23 @@ class StringToken(Token):
         # type: () -> str
         return self._regex
 
+    def format(self, value):
+        string = super(StringToken, self).format(value)
+        # String cannot add padding
+        if not fits_padding(len(string), self._padding):
+            raise FormatError('Value {value!r} does not fit padding: {padding}'.format(
+                value=string, padding=self._padding
+            ))
+        if self._case == Case.Upper:
+            string = string.upper()
+        elif self._case == Case.Lower:
+            string = string.lower()
+        elif self._case == Case.LowerCamel:
+            string = string[0].lower() + string[1:]
+        elif self._case == Case.UpperCamel:
+            string = string[0].upper() + string[1:]
+        return string
+
 
 class SequenceToken(IntToken):
     """
@@ -375,15 +392,17 @@ def get_token(token_name, config):
 
 
 if __name__ == '__main__':
-    for case in (Case.Lower, Case.Upper, Case.LowerCamel, Case.UpperCamel):
-        for numbers in (True, False):
-            for padding in (None, (3, 0), (1, 3), (3, 3)):
-                print('-' * 20)
-                print(case, numbers, padding)
-                token = StringToken('one', case=case, padding=padding, numbers=numbers)
-                print(token.regex)
-                for val in ('oneTwo', 'three', 'one1', 'THREE'):
-                    try:
-                        print('Parsed:', token.parse(val))
-                    except ParseError:
-                        print('Cannot parse: {!r}'.format(val))
+    print StringToken('one', case=Case.Lower).format('ABC')
+
+    # for case in (Case.Lower, Case.Upper, Case.LowerCamel, Case.UpperCamel):
+    #     for numbers in (True, False):
+    #         for padding in (None, (3, 0), (1, 3), (3, 3)):
+    #             print('-' * 20)
+    #             print(case, numbers, padding)
+    #             token = StringToken('one', case=case, padding=padding, numbers=numbers)
+    #             print(token.regex)
+    #             for val in ('oneTwo', 'three', 'one1', 'THREE'):
+    #                 try:
+    #                     print('Parsed:', token.parse(val))
+    #                 except ParseError:
+    #                     print('Cannot parse: {!r}'.format(val))
