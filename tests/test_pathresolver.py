@@ -51,13 +51,13 @@ class MockFilesystem(object):
             },
             constants.TEMPLATE_KEY: {
                 'root': root,
-                'project': '@{root}/{project}',
-                'storage': '@{project}/{storage}',
-                'category': '@{storage}/{category}',
-                'entity': '@{category}/{entity}',
-                'entity_data': '@{entity}/{metadata}.json',
-                'publish': '@{entity}/publishes/{publish_type}/v{version}/{entity}_{publish_type}_v{version}.{extension}',
-                'work': '@{entity}/work/{task}/workfile.{extension}'
+                'project': '{@root}/{project}',
+                'storage': '{@project}/{storage}',
+                'category': '{@storage}/{category}',
+                'entity': '{@category}/{entity}',
+                'entity_data': '{@entity}/{metadata}.json',
+                'publish': '{@entity}/publishes/{publish_type}/v{version}/{entity}_{publish_type}_v{version}.{extension}',
+                'work': '{@entity}/work/{task}/workfile.{extension}'
             }
         }
 
@@ -306,9 +306,9 @@ def test_extract_closest_template(path, directory, template, start, end):
         },
         'templates': {
             'root': '/projects',
-            'project': '@{root}/{project}',
-            'storage': '@{project}/{storage}',
-            'sequence': '@{storage}/{sequence}',
+            'project': '{@root}/{project}',
+            'storage': '{@project}/{storage}',
+            'sequence': '{@storage}/{sequence}',
         }
     })
     results = pr.extract_closest_template(path, directory=directory)

@@ -36,7 +36,7 @@ def mock_templates():
                        path='/scratch/1',
                        fields={'one': 1})
 
-    pattern_b = '@{templateA}/{two}/{two}'
+    pattern_b = '{@templateA}/{two}/{two}'
     tokens_b = get_tokens(('two', ))
     template_b = Template('templateB', pattern_b, parent=template_a, tokens=tokens_b.copy())
     tokens_b.update(tokens_a)
@@ -59,7 +59,7 @@ def mock_templates():
                        path='relative/wordA/wordB',
                        fields={'a': 'wordA', 'b': 'wordB'})
 
-    pattern_d = '/scratch/{f1}/@{templateC}'
+    pattern_d = '/scratch/{f1}/{@templateC}'
     tokens_d = get_tokens(('f1', ))
     template_d = Template('templateD', pattern_d, relatives=[template_c], tokens=tokens_d.copy())
     tokens_d.update(tokens_c)

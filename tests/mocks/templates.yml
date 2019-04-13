@@ -18,9 +18,9 @@ tokens:
 
 templates:  
   root: '/projects'
-  storage: '@{root}/{storage}'
-  project: '@{storage}/{project}'
-  category: '@{project}/{category}'
-  entity: '@{category}/{entity}'
-  task: '@[entity}/{task}'
-  publish: '@{task}/publishes/{publish_type}/v{version}/{entity}_{publish_type}_v{version}.{extension}'
+  storage: '{@root}/{storage}'
+  project: '{@storage}/{project}'
+  category: '{@project}/{category}'
+  entity: '{@category}/{entity}'
+  task: '{@entity}/{task}'
+  publish: '{@task}/publishes/{publish_type}/v{version}/{entity}_{publish_type}_v{version}.{extension}'

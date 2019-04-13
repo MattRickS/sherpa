@@ -1,6 +1,6 @@
 import re
 
-MATCH_PATTERN = re.compile('(@)?{(\w+)}')
+MATCH_PATTERN = re.compile('{(@)?(\w+)}')
 
 ENV_VAR = 'PATHRESOLVER_CONFIG'
 
