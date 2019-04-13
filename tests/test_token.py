@@ -93,8 +93,7 @@ def test_format(token_config, value, expected):
 @pytest.mark.parametrize('token_config, value', (
     ({constants.TOKEN_TYPE: 'int'}, 'one'),
     ({constants.TOKEN_TYPE: 'str', 'padding': 3}, 'ab'),  # Not enough padding
-    # TODO:
-    # ({constants.TOKEN_TYPE: 'str', 'numbers': False}, '1'),
+    ({constants.TOKEN_TYPE: 'str', 'numbers': False}, '1'),
 ))
 def test_format_fail(token_config, value):
     token = get_token('name', token_config)

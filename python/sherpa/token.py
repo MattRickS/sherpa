@@ -216,6 +216,10 @@ class StringToken(Token):
 
     def format(self, value):
         string = super(StringToken, self).format(value)
+        if not self._numbers and any(char.isdigit() for char in string):
+            raise FormatError('Token {name!r} does not accept numbers: {value}'.format(
+                name=self._name, value=string
+            ))
         # String cannot add padding
         if not fits_padding(len(string), self._padding):
             raise FormatError('Value {value!r} does not fit padding: {padding}'.format(
@@ -392,7 +396,7 @@ def get_token(token_name, config):
 
 
 if __name__ == '__main__':
-    print StringToken('one', case=Case.Lower).format('ABC')
+    print StringToken('one', case=Case.Lower, numbers=False).format('1')
 
     # for case in (Case.Lower, Case.Upper, Case.LowerCamel, Case.UpperCamel):
     #     for numbers in (True, False):
