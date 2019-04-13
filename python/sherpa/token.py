@@ -184,16 +184,16 @@ class IntToken(Token):
 class StringToken(Token):
     type = str
 
-    def __init__(self, name, default=None, choices=None, padding=None, case=None, numbers=False):
+    def __init__(self, name, default=None, choices=None, padding=None, case=None, numbers=True):
         self._case = case.lower() if case else None
         self._numbers = numbers
         if self._case is not None:
             regex = Case.get_regex(self._case, numbers=numbers, padding=padding)
         else:
-            if not self._numbers:
-                regex = '[^{}0-9]'.format(constants.STRING_BLACKLIST)
-            else:
+            if self._numbers:
                 regex = '[^{}]'.format(constants.STRING_BLACKLIST)
+            else:
+                regex = '[^{}0-9]'.format(constants.STRING_BLACKLIST)
             regex += get_padding_regex(padding) if padding else '+'
         self._regex = regex
         # Initialise regex before calling super as the init parses the default/choices

@@ -29,7 +29,7 @@ def test_get_config(string_type, cls):
     ({constants.TOKEN_TYPE: 'str', 'case': 'UPPER'}, 'ABC', 'ABC'),
     ({constants.TOKEN_TYPE: 'str', 'case': 'lowerCamel'}, 'abcDef', 'abcDef'),
     ({constants.TOKEN_TYPE: 'str', 'case': 'UpperCamel'}, 'AbcDef', 'AbcDef'),
-    ({constants.TOKEN_TYPE: 'str', 'case': 'lower', 'numbers': True}, 'abc1', 'abc1'),
+    ({constants.TOKEN_TYPE: 'str', 'case': 'lower'}, 'abc1', 'abc1'),
 ))
 def test_parse(token_config, string, expected):
     token = get_token('name', token_config)
@@ -50,8 +50,8 @@ def test_parse(token_config, string, expected):
     ({constants.TOKEN_TYPE: 'str', 'case': 'UPPER'}, 'aBc'),              # Invalid case
     ({constants.TOKEN_TYPE: 'str', 'case': 'lowerCamel'}, 'Abc'),         # Invalid case
     ({constants.TOKEN_TYPE: 'str', 'case': 'UpperCamel'}, 'aBc'),         # Invalid case
-    ({constants.TOKEN_TYPE: 'str', 'case': 'lower'}, 'abc1'),             # Numbers disallowed
-    ({constants.TOKEN_TYPE: 'str', 'case': 'lower', 'numbers': True}, '1abc'),  # Leading number
+    ({constants.TOKEN_TYPE: 'str', 'case': 'lower', 'numbers': False}, 'abc1'),  # Numbers disallowed
+    ({constants.TOKEN_TYPE: 'str', 'case': 'lower', 'numbers': True}, '1abc'),   # Leading number
 ))
 def test_parse_fail(token_config, string):
     token = get_token('name', token_config)
