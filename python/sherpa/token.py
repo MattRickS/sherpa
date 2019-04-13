@@ -13,10 +13,7 @@ class Token(object):
         :param str  string_type:
         :rtype: cls
         """
-        # Only check immediate subclasses, no tokens should subclass another
-        for subcls in cls.__subclasses__():
-            if subcls.type.__name__ == string_type:
-                return subcls
+        return TOKEN_TYPES.get(string_type)
 
     def __init__(self, name, default=None, choices=None, padding=None):
         """
@@ -224,3 +221,30 @@ class IntToken(Token):
 class StringToken(Token):
     type = str
     regex = '[^/.]+'
+
+
+class SequenceToken(IntToken):
+    """
+    Can be formatted with common padding string values, eg, #### or %04d, but
+    otherwise is treated as an IntToken. Padding defaults to 1 for a
+    SequenceToken.
+    """
+    def __init__(self, name, default=None, choices=None, padding=1):
+        super(SequenceToken, self).__init__(name, default=default, choices=choices, padding=padding)
+
+    def format(self, value):
+        return value if self.is_sequence_pattern(value) else super(SequenceToken, self).format(value)
+
+    def parse(self, token):
+        return token if self.is_sequence_pattern(token) else super(SequenceToken, self).parse(token)
+
+    def is_sequence_pattern(self, value):
+        return value == '#' * self._padding or value == '%{:02d}d'.format(self._padding)
+
+
+TOKEN_TYPES = {
+    'int': IntToken,
+    'float': FloatToken,
+    'str': StringToken,
+    'sequence': SequenceToken,
+}
