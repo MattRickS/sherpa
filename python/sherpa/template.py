@@ -1,4 +1,11 @@
-import glob
+"""
+Template
+PathTemplate - move all path logic to PathTemplate:
+    * parent
+    * join (modified)
+    * paths
+    * values_from_paths
+"""
 import os
 import re
 
@@ -8,17 +15,15 @@ from sherpa.token import Token
 
 
 class Template(object):
-    def __init__(self, name, path, parent=None, relatives=None, tokens=None):
+    def __init__(self, name, path, relatives=None, tokens=None):
         """
         :param str              name:
         :param str              path:
-        :param Template         parent:
         :param list[Template]   relatives:
         :param dict[str, Token] tokens:
         """
         self._name = name
         self._path = path
-        self._parent = parent
         self._relatives = tuple(relatives or ())
         self._local_tokens = tokens
 
@@ -28,8 +33,8 @@ class Template(object):
         self._tokens = None             # type: dict[str, Token]
 
     def __repr__(self):
-        return 'Template({!r}, {!r}, parent={}, relatives={}, tokens={})'.format(
-            self._name, self._path, self._parent, self._relatives, self._local_tokens
+        return 'Template({!r}, {!r}, relatives={}, tokens={})'.format(
+            self._name, self._path, self._relatives, self._local_tokens
         )
 
     def __str__(self):
@@ -38,11 +43,11 @@ class Template(object):
     @property
     def linked_templates(self):
         """
-        All immediate templates linked to this template, relatives and parent.
+        All immediate templates linked to this template.
 
         :rtype: list[Template]
         """
-        return ((self._parent, ) if self._parent else ()) + self._relatives
+        return self._relatives[:]
 
     @property
     def name(self):
@@ -61,15 +66,6 @@ class Template(object):
         if self._ordered_fields is None:
             self._resolve_pattern()
         return self._ordered_fields[:]
-
-    @property
-    def parent(self):
-        """
-        The leading referenced template if one exists
-
-        :rtype: Template
-        """
-        return self._parent
 
     @property
     def pattern(self):
@@ -96,53 +92,11 @@ class Template(object):
         return self._regex
 
     @property
-    def relatives(self):
-        """
-        All immediate linked templates that are not the parent, ie, that do not
-        define the root of the path
-
-        :rtype: tuple[Template]
-        """
-        return self._relatives
-
-    @property
     def tokens(self):
         """
         :rtype: dict[str, Token]
         """
         return self._get_tokens().copy()
-
-    def extract(self, path, directory=True):
-        """
-        Splits the path to the part that matches the template and the relative 
-        remainder.
-        
-        :raise ParseError: if the path doesn't match the template's pattern
-        :param str  path: 
-        :param bool directory:  If True, a partial match is only considered if 
-                                it matches a full directory and not a partial 
-                                folder/filename match. The returned relative 
-                                path will strip any leading path separator.
-        :rtype: tuple[str, dict, str]
-        """
-        # If splitting by directory and the regex already includes a trailing 
-        # separator, there is no need to modify the regex, otherwise ensure the 
-        # pattern only matches if it's exact or followed by a directory separator
-        modified = directory and not self.regex.endswith(os.path.sep)
-        suffix = '(?:$|/)' if modified else ''
-        regex = '^' + self.regex + suffix
-        match, fields = self._parse(path, regex)
-        start = match.group(0)
-        # Extract the remainder before modifying the start path - this is 
-        # because if splitting on the directory, the relative remainder should 
-        # not include the leading separator.
-        end = path[len(start):]
-        # Only strip the captured separator if it was added to the pattern
-        # Note, it's safe to use '/' instead of os.path.sep as the match is done 
-        # against a separator replaced version of the path
-        if modified and start.endswith('/'):
-            start = start[:-1]
-        return start, fields, end
 
     def format(self, fields):
         """
@@ -178,10 +132,7 @@ class Template(object):
         """
         tokens = self._local_tokens.copy()
         if isinstance(template, Template):
-            relatives = self._relatives + template.relatives
-            if template.parent is not None:
-                relatives = relatives + (template.parent,)
-
+            relatives = self._relatives + template.linked_templates
             tokens.update(template._local_tokens)
             name = template.name
             path = template._path
@@ -195,11 +146,10 @@ class Template(object):
             )
 
         joiner = '' if path.startswith('/') else '/'
-        joined_template = Template(self._name + '/' + name,
-                                   self._path + joiner + path,
-                                   parent=self._parent,
-                                   relatives=relatives,
-                                   tokens=tokens)
+        joined_template = self.__class__(self._name + '/' + name,
+                                         self._path + joiner + path,
+                                         relatives=relatives,
+                                         tokens=tokens)
         return joined_template
 
     def missing(self, fields, ignore_defaults=True):
@@ -223,39 +173,6 @@ class Template(object):
         """
         _, fields = self._parse(path, '^' + self.regex + '$')
         return fields
-
-    def paths(self, fields, use_defaults=False):
-        """
-        Returns the paths on disk that match the given fields by using wildcards
-        for missing values.
-
-        :param dict fields:         Dictionary of fields and their values
-        :param bool use_defaults:   Whether or not to use default token values
-                                    for missing fields instead of wildcards.
-        :rtype: list[str]
-        """
-        tokens = fields.copy()
-        for f, t in self.missing(fields, ignore_defaults=True).items():
-            # Default value might be None; in either case, fallback on wildcard
-            tokens[f] = (t.default if use_defaults else None) or constants.WILDCARD
-
-        pattern = self.format(tokens)
-        return [os.path.normpath(p) for p in glob.iglob(pattern)]
-
-    def values_from_paths(self, field, fields, use_defaults=False):
-        """
-        Finds all paths on disk that match the given fields and extracts the
-        value for the requested field in each path.
-
-        :param str                  field:
-        :param dict[str, object]    fields:
-        :param bool                 use_defaults:
-        :rtype: dict[object, str]
-        """
-        fields[field] = constants.WILDCARD
-        paths = self.paths(fields, use_defaults)
-        path_fields = {self.parse(p)[field]: p for p in paths}
-        return path_fields
 
     def _get_tokens(self):
         """
