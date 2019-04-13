@@ -1,6 +1,6 @@
 import re
 
-REF_NAMETEMPLATE = '%'
+REF_NAMETEMPLATE = '#'
 REF_PATHTEMPLATE = '@'
 MATCH_PATTERN = re.compile('{([%s%s])?(\w+)}' % (REF_PATHTEMPLATE, REF_NAMETEMPLATE))
 

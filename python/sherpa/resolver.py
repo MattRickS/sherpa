@@ -197,13 +197,16 @@ class TemplateResolver(object):
 
         for match in constants.MATCH_PATTERN.finditer(template_string):
             reference_type, token_name = match.groups()
-            if reference_type:
+            if reference_type == constants.REF_PATHTEMPLATE:
                 # Extract parent and relative Templates by name
-                template = self._get_template(template_type, token_name)
-                if reference_type == constants.REF_PATHTEMPLATE and match.start() == 0:
+                template = self._get_template(constants.KEY_PATHTEMPLATE, token_name)
+                if match.start() == 0:
                     parent = template
                 else:
                     relatives.append(template)
+            elif reference_type == constants.REF_NAMETEMPLATE:
+                template = self._get_template(constants.KEY_NAMETEMPLATE, token_name)
+                relatives.append(template)
             else:
                 # Extract local tokens, validate against loaded Tokens
                 tokens[token_name] = self._tokens[token_name]
