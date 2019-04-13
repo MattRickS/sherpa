@@ -299,12 +299,12 @@ def test_values_from_paths(mock_filesystem, field, fields, values):
 ))
 def test_extract_closest_template(path, directory, template, start, end):
     pr = TemplateResolver({
-        'tokens': {
+        constants.KEY_TOKEN: {
             'project': 'str',
             'storage': 'str',
             'sequence': 'str',
         },
-        'templates': {
+        constants.KEY_PATHTEMPLATE: {
             'root': '/projects',
             'project': '{@root}/{project}',
             'storage': '{@project}/{storage}',

@@ -23,7 +23,7 @@ tokens:
 names:
   variant_entity: '{entity}_{variant}'
 
-templates:  
+paths:
   root: '/projects'
   storage: '{@root}/{storage}'
   project: '{@storage}/{project}'

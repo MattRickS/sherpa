@@ -7,7 +7,7 @@ MATCH_PATTERN = re.compile('{([%s%s])?(\w+)}' % (REF_PATHTEMPLATE, REF_NAMETEMPL
 ENV_VAR = 'TEMPLATERESOLVER_CONFIG'
 
 KEY_NAMETEMPLATE = 'names'
-KEY_PATHTEMPLATE = 'templates'
+KEY_PATHTEMPLATE = 'paths'
 KEY_TOKEN = 'tokens'
 TOKEN_TYPE = 'type'
 
