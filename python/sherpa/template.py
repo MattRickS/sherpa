@@ -1,12 +1,3 @@
-"""
-Template
-PathTemplate - move all path logic to PathTemplate:
-    * parent
-    * join (modified)
-    * paths
-    * values_from_paths
-"""
-import os
 import re
 
 from sherpa import constants
@@ -15,15 +6,15 @@ from sherpa.token import Token
 
 
 class Template(object):
-    def __init__(self, name, path, relatives=None, tokens=None):
+    def __init__(self, name, config_string, relatives=None, tokens=None):
         """
         :param str              name:
-        :param str              path:
+        :param str              config_string:
         :param list[Template]   relatives:
         :param dict[str, Token] tokens:
         """
         self._name = name
-        self._path = path
+        self._config_string = config_string
         self._relatives = tuple(relatives or ())
         self._local_tokens = tokens
 
@@ -34,7 +25,7 @@ class Template(object):
 
     def __repr__(self):
         return 'Template({!r}, {!r}, relatives={}, tokens={})'.format(
-            self._name, self._path, self._relatives, self._local_tokens
+            self._name, self._config_string, self._relatives, self._local_tokens
         )
 
     def __str__(self):
@@ -135,19 +126,19 @@ class Template(object):
             relatives = self._relatives + template.linked_templates
             tokens.update(template._local_tokens)
             name = template.name
-            path = template._path
+            config_string = template._config_string
         elif isinstance(template, str):
             relatives = self._relatives
             name = template
-            path = template
+            config_string = template
         else:
             raise TypeError(
                 'Cannot join unsupported datatype: {}'.format(type(template))
             )
 
-        joiner = '' if path.startswith('/') else '/'
+        joiner = '' if config_string.startswith('/') else '/'
         joined_template = self.__class__(self._name + '/' + name,
-                                         self._path + joiner + path,
+                                         self._config_string + joiner + config_string,
                                          relatives=relatives,
                                          tokens=tokens)
         return joined_template
@@ -162,16 +153,16 @@ class Template(object):
         return {f: t for f, t in self._get_tokens().items()
                 if f not in fields and (ignore_defaults or t.default is not None)}
 
-    def parse(self, path):
+    def parse(self, string):
         """
-        Parses the path against the pattern, extracting a dictionary of the
+        Parses the string against the pattern, extracting a dictionary of the
         fields and their values.
 
-        :raise ParseError: if the path doesn't match the template's pattern
-        :param str  path:
+        :raise ParseError: if the string doesn't match the template's pattern
+        :param str  string:
         :rtype: dict[str, object]
         """
-        _, fields = self._parse(path, '^' + self.regex + '$')
+        _, fields = self._parse(string, '^' + self.regex + '$')
         return fields
 
     def _get_tokens(self):
@@ -188,13 +179,12 @@ class Template(object):
             self._tokens = tokens
         return self._tokens
 
-    def _parse(self, path, regex):
+    def _parse(self, string, regex):
         # type: (str, str) -> tuple[re.Match, dict]
-        """ Matches the pattern to the path, returning the match and fields """
-        path = path.replace(os.path.sep, '/')
-        match = re.match(regex, path)
+        """ Matches the pattern to the string, returning the match and fields """
+        match = re.match(regex, string)
         if match is None:
-            raise ParseError('Path {!r} does not match Template: {}'.format(path, self))
+            raise ParseError('String {!r} does not match Template: {}'.format(string, self))
 
         tokens = self._get_tokens()
         fields = {}
@@ -219,7 +209,7 @@ class Template(object):
         # other templates with that template's pattern.
         last_idx = 0
         self._pattern = ''
-        for match in constants.MATCH_PATTERN.finditer(self._path):
+        for match in constants.MATCH_PATTERN.finditer(self._config_string):
             # We only care about templates, preserve token patterns
             is_template, name = match.groups()
             if not is_template:
@@ -233,9 +223,9 @@ class Template(object):
             start, end = match.span()
             relative_template = linked_templates[name]
             ordered_fields += relative_template.ordered_fields
-            self._pattern += self._path[last_idx:start] + relative_template.pattern
+            self._pattern += self._config_string[last_idx:start] + relative_template.pattern
             last_idx = end
 
-        # Add any remaining path
-        self._pattern += self._path[last_idx:]
+        # Add any remaining string
+        self._pattern += self._config_string[last_idx:]
         self._ordered_fields = tuple(ordered_fields)

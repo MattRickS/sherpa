@@ -7,20 +7,20 @@ from sherpa.token import Token
 
 
 class PathTemplate(Template):
-    def __init__(self, name, path, parent=None, relatives=None, tokens=None):
+    def __init__(self, name, config_string, parent=None, relatives=None, tokens=None):
         """
         :param str              name:
-        :param str              path:
+        :param str              config_string:
         :param Template         parent:
         :param list[Template]   relatives:
         :param dict[str, Token] tokens:
         """
-        super(PathTemplate, self).__init__(name, path, relatives=relatives, tokens=tokens)
+        super(PathTemplate, self).__init__(name, config_string, relatives=relatives, tokens=tokens)
         self._parent = parent
 
     def __repr__(self):
         return 'PathTemplate({!r}, {!r}, parent={}, relatives={}, tokens={})'.format(
-            self._name, self._path, self._parent, self._relatives, self._local_tokens
+            self._name, self._config_string, self._parent, self._relatives, self._local_tokens
         )
 
     @property
@@ -127,3 +127,7 @@ class PathTemplate(Template):
         paths = self.paths(fields, use_defaults)
         path_fields = {self.parse(p)[field]: p for p in paths}
         return path_fields
+
+    def _parse(self, string, regex):
+        string = string.replace(os.path.sep, '/')
+        return super(PathTemplate, self)._parse(string, regex)
