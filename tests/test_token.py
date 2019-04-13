@@ -30,6 +30,12 @@ def test_get_config(string_type, cls):
     ({constants.TOKEN_TYPE: 'str', 'case': 'lowerCamel'}, 'abcDef', 'abcDef'),
     ({constants.TOKEN_TYPE: 'str', 'case': 'UpperCamel'}, 'AbcDef', 'AbcDef'),
     ({constants.TOKEN_TYPE: 'str', 'case': 'lower'}, 'abc1', 'abc1'),
+    ({constants.TOKEN_TYPE: 'sequence'}, '50', 50),
+    ({constants.TOKEN_TYPE: 'sequence'}, '###', '###'),
+    ({constants.TOKEN_TYPE: 'sequence'}, '%04d', '%04d'),
+    ({constants.TOKEN_TYPE: 'sequence', 'padding': '3+'}, '001', 1),
+    ({constants.TOKEN_TYPE: 'sequence', 'padding': '3+'}, '###', '###'),
+    ({constants.TOKEN_TYPE: 'sequence', 'padding': '3+'}, '%03d', '%03d'),
 ))
 def test_parse(token_config, string, expected):
     token = get_token('name', token_config)
@@ -39,10 +45,14 @@ def test_parse(token_config, string, expected):
 @pytest.mark.parametrize('token_config, string', (
     ({constants.TOKEN_TYPE: 'str'}, 'one/two'),                           # Invalid characters
     ({constants.TOKEN_TYPE: 'int'}, 'one'),                               # Wrong type
+    ({constants.TOKEN_TYPE: 'sequence'}, 'abc'),                          # Wrong type
     ({constants.TOKEN_TYPE: 'int', 'padding': 3}, '0001'),                # Too much padding
-    ({constants.TOKEN_TYPE: 'int', 'padding': 5}, '0001'),                # Not enough padding
     ({constants.TOKEN_TYPE: 'float', 'padding': 2}, '1.300'),             # Too much padding
+    ({constants.TOKEN_TYPE: 'int', 'padding': 5}, '0001'),                # Not enough padding
     ({constants.TOKEN_TYPE: 'float', 'padding': 4}, '1.300'),             # Not enough padding
+    ({constants.TOKEN_TYPE: 'sequence', 'padding': '3+'}, '50'),          # Not enough padding
+    ({constants.TOKEN_TYPE: 'sequence', 'padding': '3+'}, '##'),          # Not enough padding
+    ({constants.TOKEN_TYPE: 'sequence', 'padding': '3+'}, '%02d'),        # Not enough padding
     ({constants.TOKEN_TYPE: 'str', 'choices': ['two', 'three']}, 'one'),  # Invalid choice
     ({constants.TOKEN_TYPE: 'int', 'choices': [2, 3]}, '1'),              # Invalid choice
     ({constants.TOKEN_TYPE: 'float', 'choices': [2.0, 3.0]}, '1.0'),      # Invalid choice
