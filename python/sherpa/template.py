@@ -6,6 +6,16 @@ from sherpa.token import Token
 
 
 class Template(object):
+    @classmethod
+    def from_token(cls, token):
+        """
+        Converts a token to a simple template
+
+        :param Token token:
+        :rtype: Template
+        """
+        return cls(token.name, '{%s}' % token.name, tokens={token.name: token})
+
     def __init__(self, name, config_string, relatives=None, tokens=None):
         """
         :param str              name:

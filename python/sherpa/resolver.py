@@ -1,9 +1,10 @@
 import os
-import yaml
 
+import yaml
 from sherpa import constants
 from sherpa.exceptions import ParseError, TemplateResolverError
 from sherpa.pathtemplate import PathTemplate
+from sherpa.template import Template
 from sherpa.token import Token
 
 
@@ -112,12 +113,21 @@ class TemplateResolver(object):
                 continue
         return matches[min(matches)]
 
-    def get_nametemplate(self, template_name):
+    def get_nametemplate(self, template_name, allow_tokens=True):
         """
-        :param str  template_name:
+        :param str  template_name:  Name of the template to get
+        :param bool allow_tokens:   Whether or not to use tokens for name
+                                    templates if no template exists
         :rtype: Template
         """
-        return self._get_template(constants.KEY_NAMETEMPLATE, template_name)
+        try:
+            template = self._get_template(constants.KEY_NAMETEMPLATE, template_name)
+        except KeyError:
+            if not allow_tokens:
+                raise
+            token = self._tokens[template_name]
+            template = Template.from_token(token)
+        return template
 
     def get_pathtemplate(self, template_name):
         """
@@ -187,25 +197,32 @@ class TemplateResolver(object):
 
         for match in constants.MATCH_PATTERN.finditer(template_string):
             reference_type, token_name = match.groups()
-            if reference_type == constants.REF_PATHTEMPLATE:
+            if reference_type:
                 # Extract parent and relative Templates by name
                 template = self._get_template(template_type, token_name)
-                if match.start() == 0:
+                if reference_type == constants.REF_PATHTEMPLATE and match.start() == 0:
                     parent = template
                 else:
                     relatives.append(template)
-            elif reference_type == constants.REF_NAMETEMPLATE:
-                # Extract parent and relative Templates by name
-                template = self._get_template(template_type, token_name)
-                relatives.append(template)
             else:
                 # Extract local tokens, validate against loaded Tokens
                 tokens[token_name] = self._tokens[token_name]
-        template = PathTemplate(template_name,
+
+        if template_type == constants.KEY_PATHTEMPLATE:
+            template = PathTemplate(
+                template_name,
+                template_string,
+                parent=parent,
+                relatives=relatives,
+                tokens=tokens
+            )
+        elif template_type == constants.KEY_NAMETEMPLATE:
+            template = Template(template_name,
                                 template_string,
-                                parent=parent,
                                 relatives=relatives,
                                 tokens=tokens)
+        else:
+            raise TypeError('Invalid template type: {}'.format(template_type))
 
         self._templates.setdefault(template_type, {})[template_name] = template
         return template
