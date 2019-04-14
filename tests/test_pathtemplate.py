@@ -114,8 +114,7 @@ def test_extract(mock_templates, extra='sub/path'):
 
 
 def test_extract_specific():
-    from sherpa.token import StringToken
-    project_token = StringToken('project')
+    project_token = token.StringToken('project')
     project = PathTemplate('project', '/projects/{project}', tokens={'project': project_token})
     assert project.extract('/projects/path') == ('/projects/path', {'project': 'path'}, '')
     assert project.extract('/projects/path/to/something.ext') == ('/projects/path', {'project': 'path'}, 'to/something.ext')
@@ -158,3 +157,48 @@ def test_paths(mocker, token_configs, template_pattern, glob_pattern, paths, exp
     template = PathTemplate('test', template_pattern, tokens=tokens)
     assert template.paths({}) == expected
     mock.assert_called_once_with(glob_pattern)
+
+
+def test_join():
+    project_token = token.get_token('project', {constants.TOKEN_TYPE: 'str'})
+    entity_token = token.get_token('project', {constants.TOKEN_TYPE: 'str'})
+    project_template = PathTemplate('project',
+                                    '/project/{project}',
+                                    tokens={'project': project_token})
+    entity_template = PathTemplate('entity', '{entity}', tokens={'entity': entity_token})
+
+    template = project_template.join(entity_template)
+    assert template.name == 'project/entity'
+    assert template.pattern == '/project/{project}/{entity}'
+    assert template.tokens == {'project': project_token, 'entity': entity_token}
+    assert template.parent == project_template
+    assert template.linked_templates == (project_template, entity_template)
+    assert template.relatives == (entity_template,)
+    assert isinstance(template, PathTemplate)
+
+    template = project_template.join(entity_template, separator=False)
+    assert template.name == 'project/entity'
+    assert template.pattern == '/project/{project}{entity}'
+    assert template.tokens == {'project': project_token, 'entity': entity_token}
+    assert template.parent == project_template
+    assert template.linked_templates == (project_template, entity_template)
+    assert template.relatives == (entity_template,)
+    assert isinstance(template, PathTemplate)
+
+    template = project_template.join('some/string')
+    assert template.name == 'project/some/string'
+    assert template.pattern == '/project/{project}/some/string'
+    assert template.tokens == {'project': project_token}
+    assert template.parent == project_template
+    assert template.linked_templates == (project_template,)
+    assert template.relatives == ()
+    assert isinstance(template, PathTemplate)
+
+    template = project_template.join('some/string', separator=False)
+    assert template.name == 'project/some/string'
+    assert template.pattern == '/project/{project}some/string'
+    assert template.tokens == {'project': project_token}
+    assert template.parent == project_template
+    assert template.linked_templates == (project_template,)
+    assert template.relatives == ()
+    assert isinstance(template, PathTemplate)

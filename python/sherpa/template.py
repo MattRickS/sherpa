@@ -1,4 +1,5 @@
 import re
+from collections import Iterable
 
 from sherpa import constants
 from sherpa.exceptions import FormatError, ParseError
@@ -6,6 +7,8 @@ from sherpa.token import Token
 
 
 class Template(object):
+    SYMBOL = constants.REF_NAMETEMPLATE
+
     @classmethod
     def from_token(cls, token):
         """
@@ -18,20 +21,20 @@ class Template(object):
 
     def __init__(self, name, config_string, relatives=None, tokens=None):
         """
-        :param str              name:
-        :param str              config_string:
-        :param list[Template]   relatives:
-        :param dict[str, Token] tokens:
+        :param str                  name:
+        :param str                  config_string:
+        :param Iterable[Template]   relatives:
+        :param dict[str, Token]     tokens:
         """
         self._name = name
         self._config_string = config_string
         self._relatives = tuple(relatives or ())
         self._local_tokens = tokens
 
-        self._ordered_fields = None     # type: tuple[Token]
+        self._ordered_fields = None     # type: tuple
         self._pattern = None            # type: str
         self._regex = None              # type: str
-        self._tokens = None             # type: dict[str, Token]
+        self._tokens = None             # type: dict
 
     def __repr__(self):
         return 'Template({!r}, {!r}, relatives={}, tokens={})'.format(
@@ -131,26 +134,23 @@ class Template(object):
         :param Template|str template: Suffix template or string
         :rtype: Template
         """
-        tokens = self._local_tokens.copy()
+        config_string = '{%s%s}' % (self.SYMBOL, self.name)
         if isinstance(template, Template):
-            relatives = self._relatives + template.linked_templates
-            tokens.update(template._local_tokens)
+            relatives = (self, template)
             name = template.name
-            config_string = template._config_string
+            config_string += '{%s%s}' % (template.SYMBOL, template.name)
         elif isinstance(template, str):
-            relatives = self._relatives
+            relatives = (self,)
             name = template
-            config_string = template
+            config_string += template
         else:
             raise TypeError(
                 'Cannot join unsupported datatype: {}'.format(type(template))
             )
 
-        joiner = '' if config_string.startswith('/') else '/'
         joined_template = self.__class__(self._name + '/' + name,
-                                         self._config_string + joiner + config_string,
-                                         relatives=relatives,
-                                         tokens=tokens)
+                                         config_string,
+                                         relatives=relatives)
         return joined_template
 
     def missing(self, fields, ignore_defaults=True):

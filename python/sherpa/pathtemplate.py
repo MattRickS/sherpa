@@ -8,6 +8,8 @@ from sherpa.token import Token
 
 
 class PathTemplate(Template):
+    SYMBOL = constants.REF_PATHTEMPLATE
+
     def __init__(self, name, config_string, parent=None, relatives=None, tokens=None):
         """
         :param str              name:
@@ -84,16 +86,31 @@ class PathTemplate(Template):
             start = start[:-1]
         return start, fields, end
 
-    def join(self, template):
+    def join(self, template, separator=True):
         """
-        Appends the given template, returning a new PathTemplate object.
+        Combines the current and given template, returning a new PathTemplate object.
         Intended for combining relative templates on the fly.
 
         :param Template|str template: Suffix template or string
-        :rtype: Template
+        :param bool separator: Whether or not to ensure a separator exists
+            between the two patterns. If False, the strings are combined
+            unchanged (if a separator already exists, it will not be removed)
+        :rtype: PathTemplate
         """
         path_template = super(PathTemplate, self).join(template)
-        path_template._parent = self._parent
+
+        # Move the first template to a relative template
+        path_template._parent = self
+        path_template._relatives = path_template._relatives[1:]
+
+        # Insert additional path separators if required and non exists
+        string = template.pattern if isinstance(template, Template) else template
+        if separator and not string.startswith('/'):
+            # The initial template will be a template ref, ie, {name}. Find the
+            # end of it, and insert a separator directly after
+            s = path_template._config_string
+            index = s.find('}') + 1
+            path_template._config_string = s[:index] + '/' + s[index:]
         return path_template
 
     def paths(self, fields, use_defaults=False):
