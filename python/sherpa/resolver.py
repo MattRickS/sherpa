@@ -125,7 +125,7 @@ class TemplateResolver(object):
                 )
             )
 
-        tokens = {}
+        tokens = []
         parent = None
         relatives = []
 
@@ -144,7 +144,7 @@ class TemplateResolver(object):
             else:
                 # Extract local tokens, validate against loaded Tokens
                 try:
-                    tokens[token_name] = self._tokens[token_name]
+                    tokens.append(self._tokens[token_name])
                 except KeyError:
                     raise exceptions.MissingTokenError(
                         'Token {!r} required by {} {!r} does not exist'.format(

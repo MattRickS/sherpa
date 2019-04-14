@@ -25,7 +25,7 @@ def mock_templates():
               for name, config in token_config.items()}
 
     def get_tokens(token_names):
-        return {k: v for k, v in tokens.items() if k in token_names}
+        return [v for k, v in tokens.items() if k in token_names]
 
     pattern = '/scratch/{one}'
     tokens_a = get_tokens(('one', ))
@@ -33,18 +33,18 @@ def mock_templates():
     mta = MockTemplate(template_a,
                        pattern=pattern,
                        linked=(),
-                       tokens=tokens_a,
+                       tokens={t.name: t for t in tokens_a},
                        path='/scratch/1',
                        fields={'one': 1})
 
     pattern_b = '{#templateA}/{two}/{two}'
     tokens_b = get_tokens(('two', ))
-    template_b = Template('templateB', pattern_b, relatives=(template_a,), tokens=tokens_b.copy())
-    tokens_b.update(tokens_a)
+    template_b = Template('templateB', pattern_b, relatives=(template_a,), tokens=tokens_b)
+    tokens_b.extend(tokens_a)
     mtb = MockTemplate(template_b,
                        pattern='/scratch/{one}/{two}/{two}',
                        linked=(template_a,),
-                       tokens=tokens_b,
+                       tokens={t.name: t for t in tokens_b},
                        path='/scratch/1/2/2',
                        fields={'one': 1, 'two': 2})
 
@@ -54,18 +54,18 @@ def mock_templates():
     mtc = MockTemplate(template_c,
                        pattern=pattern_c,
                        linked=(),
-                       tokens=tokens_c,
+                       tokens={t.name: t for t in tokens_c},
                        path='relative/wordA/wordB',
                        fields={'a': 'wordA', 'b': 'wordB'})
 
     pattern_d = '/scratch/{f1}/{#templateC}'
     tokens_d = get_tokens(('f1', ))
-    template_d = Template('templateD', pattern_d, relatives=(template_c,), tokens=tokens_d.copy())
-    tokens_d.update(tokens_c)
+    template_d = Template('templateD', pattern_d, relatives=(template_c,), tokens=tokens_d)
+    tokens_d.extend(tokens_c)
     mtd = MockTemplate(template_d,
                        pattern='/scratch/{f1}/relative/{a}/{b}',
                        linked=(template_c,),
-                       tokens=tokens_d,
+                       tokens={t.name: t for t in tokens_d},
                        path='/scratch/1.1/relative/wordA/wordB',
                        fields={'f1': 1.1, 'a': 'wordA', 'b': 'wordB'})
 
@@ -73,7 +73,7 @@ def mock_templates():
 
 
 def test_repr():
-    template = Template('test', '/path/to/{test}', tokens={'test': token.get_token('test', {constants.TOKEN_TYPE: 'str'})})
+    template = Template('test', '/path/to/{test}', tokens=(token.get_token('test', {constants.TOKEN_TYPE: 'str'}),))
     assert repr(template) == (
         "Template('test', '/path/to/{test}', relatives=(), "
         "tokens={'test': StringToken('test', default=None, choices=None, padding=None)})"
@@ -107,7 +107,7 @@ def test_parse(mock_templates):
 
 def test_parse_fail():
     template = Template('name', '/{token}/{token}',
-                        tokens={'token': token.get_token('token', {constants.TOKEN_TYPE: 'str'})})
+                        tokens=(token.get_token('token', {constants.TOKEN_TYPE: 'str'}),))
     assert template.parse('/abc/abc') == {'token': 'abc'}
     with pytest.raises(exceptions.ParseError):
         template.parse('/abc/def')
@@ -115,10 +115,10 @@ def test_parse_fail():
 
 def test_format_fail():
     template = Template('name', '/{foo}/{bar}',
-                        tokens={
-                            'foo': token.get_token('foo', {constants.TOKEN_TYPE: 'str'}),
-                            'bar': token.get_token('bar', {constants.TOKEN_TYPE: 'str'}),
-                        })
+                        tokens=(
+                            token.get_token('foo', {constants.TOKEN_TYPE: 'str'}),
+                            token.get_token('bar', {constants.TOKEN_TYPE: 'str'}),
+                        ))
     assert template.format({'foo': 'foo', 'bar': 'bar'}) == '/foo/bar'
     with pytest.raises(exceptions.FormatError):
         template.format({'foo': 'foo'})

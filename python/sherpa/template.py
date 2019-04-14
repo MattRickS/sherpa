@@ -17,19 +17,19 @@ class Template(object):
         :param Token token:
         :rtype: Template
         """
-        return cls(token.name, '{%s}' % token.name, tokens={token.name: token})
+        return cls(token.name, '{%s}' % token.name, tokens=(token,))
 
     def __init__(self, name, config_string, relatives=None, tokens=None):
         """
         :param str                  name:
         :param str                  config_string:
         :param Iterable[Template]   relatives:
-        :param dict[str, Token]     tokens:
+        :param Iterable[Token]      tokens:
         """
         self._name = name
         self._config_string = config_string
         self._relatives = tuple(relatives or ())
-        self._local_tokens = tokens
+        self._local_tokens = {t.name: t for t in tokens or ()}
 
         self._ordered_fields = None     # type: tuple
         self._pattern = None            # type: str

@@ -1,5 +1,6 @@
 import glob
 import os
+from collections import Iterable
 
 from sherpa import constants
 from sherpa import exceptions
@@ -16,7 +17,7 @@ class PathTemplate(Template):
         :param str              config_string:
         :param Template         parent:
         :param list[Template]   relatives:
-        :param dict[str, Token] tokens:
+        :param Iterable[Token]  tokens:
         """
         super(PathTemplate, self).__init__(name, config_string, relatives=relatives, tokens=tokens)
         self._parent = parent

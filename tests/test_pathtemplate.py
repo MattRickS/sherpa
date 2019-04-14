@@ -25,7 +25,7 @@ def mock_templates():
               for name, config in token_config.items()}
 
     def get_tokens(token_names):
-        return {k: v for k, v in tokens.items() if k in token_names}
+        return [v for k, v in tokens.items() if k in token_names]
 
     pattern = '/scratch/{one}'
     tokens_a = get_tokens(('one', ))
@@ -34,19 +34,19 @@ def mock_templates():
                        parent=None,
                        pattern=pattern,
                        relatives=(),
-                       tokens=tokens_a,
+                       tokens={t.name: t for t in tokens_a},
                        path='/scratch/1',
                        fields={'one': 1})
 
     pattern_b = '{@templateA}/{two}/{two}'
     tokens_b = get_tokens(('two', ))
-    template_b = PathTemplate('templateB', pattern_b, parent=template_a, tokens=tokens_b.copy())
-    tokens_b.update(tokens_a)
+    template_b = PathTemplate('templateB', pattern_b, parent=template_a, tokens=tokens_b)
+    tokens_b.extend(tokens_a)
     mtb = MockTemplate(template_b,
                        parent=template_a,
                        pattern='/scratch/{one}/{two}/{two}',
                        relatives=(),
-                       tokens=tokens_b,
+                       tokens={t.name: t for t in tokens_b},
                        path='/scratch/1/2/2',
                        fields={'one': 1, 'two': 2})
 
@@ -57,19 +57,19 @@ def mock_templates():
                        parent=None,
                        pattern=pattern_c,
                        relatives=(),
-                       tokens=tokens_c,
+                       tokens={t.name: t for t in tokens_c},
                        path='relative/wordA/wordB',
                        fields={'a': 'wordA', 'b': 'wordB'})
 
     pattern_d = '/scratch/{f1}/{@templateC}'
     tokens_d = get_tokens(('f1', ))
-    template_d = PathTemplate('templateD', pattern_d, relatives=[template_c], tokens=tokens_d.copy())
-    tokens_d.update(tokens_c)
+    template_d = PathTemplate('templateD', pattern_d, relatives=[template_c], tokens=tokens_d)
+    tokens_d.extend(tokens_c)
     mtd = MockTemplate(template_d,
                        parent=None,
                        pattern='/scratch/{f1}/relative/{a}/{b}',
                        relatives=(template_c, ),
-                       tokens=tokens_d,
+                       tokens={t.name: t for t in tokens_d},
                        path='/scratch/1.1/relative/wordA/wordB',
                        fields={'f1': 1.1, 'a': 'wordA', 'b': 'wordB'})
 
@@ -77,7 +77,7 @@ def mock_templates():
 
 
 def test_repr():
-    template = PathTemplate('test', '/path/to/{test}', tokens={'test': token.get_token('test', {constants.TOKEN_TYPE: 'str'})})
+    template = PathTemplate('test', '/path/to/{test}', tokens=(token.get_token('test', {constants.TOKEN_TYPE: 'str'}),))
     assert repr(template) == (
         "PathTemplate('test', '/path/to/{test}', parent=None, relatives=(), "
         "tokens={'test': StringToken('test', default=None, choices=None, padding=None)})"
@@ -123,7 +123,7 @@ def test_extract(mock_templates, extra='sub/path'):
 
 def test_extract_specific():
     project_token = token.StringToken('project')
-    project = PathTemplate('project', '/projects/{project}', tokens={'project': project_token})
+    project = PathTemplate('project', '/projects/{project}', tokens=(project_token,))
     assert project.extract('/projects/path') == ('/projects/path', {'project': 'path'}, '')
     assert project.extract('/projects/path/to/something.ext') == ('/projects/path', {'project': 'path'}, 'to/something.ext')
     assert project.extract('/projects/path/to/something.ext', directory=False) == ('/projects/path', {'project': 'path'}, '/to/something.ext')
@@ -161,7 +161,7 @@ def test_extract_specific():
 ))
 def test_paths(mocker, token_configs, template_pattern, glob_pattern, paths, expected):
     mock = mocker.patch('glob.iglob', return_value=paths)
-    tokens = {name: token.get_token(name, cfg) for name, cfg in token_configs.items()}
+    tokens = (token.get_token(name, cfg) for name, cfg in token_configs.items())
     template = PathTemplate('test', template_pattern, tokens=tokens)
     assert template.paths({}) == expected
     mock.assert_called_once_with(glob_pattern)
@@ -169,11 +169,11 @@ def test_paths(mocker, token_configs, template_pattern, glob_pattern, paths, exp
 
 def test_join():
     project_token = token.get_token('project', {constants.TOKEN_TYPE: 'str'})
-    entity_token = token.get_token('project', {constants.TOKEN_TYPE: 'str'})
+    entity_token = token.get_token('entity', {constants.TOKEN_TYPE: 'str'})
     project_template = PathTemplate('project',
                                     '/project/{project}',
-                                    tokens={'project': project_token})
-    entity_template = PathTemplate('entity', '{entity}', tokens={'entity': entity_token})
+                                    tokens=(project_token,))
+    entity_template = PathTemplate('entity', '{entity}', tokens=(entity_token,))
 
     template = project_template.join(entity_template)
     assert template.name == 'project/entity'
