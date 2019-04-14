@@ -210,3 +210,9 @@ def test_join():
     assert template.linked_templates == (project_template,)
     assert template.relatives == ()
     assert isinstance(template, PathTemplate)
+
+
+def test_join_fail():
+    project_template = PathTemplate('temp', '/path/to/something')
+    with pytest.raises(TypeError):
+        project_template.join(1)
