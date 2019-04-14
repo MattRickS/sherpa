@@ -185,6 +185,7 @@ def test_format(token_config, value, expected):
     ({constants.TOKEN_TYPE: 'str'}, 'one/two'),              # Invalid characters
     ({constants.TOKEN_TYPE: 'str', 'numbers': False}, '1'),  # Invalid characters
     ({constants.TOKEN_TYPE: 'str', 'padding': 3}, 'ab'),     # Not enough padding
+    ({constants.TOKEN_TYPE: 'str', 'padding': 3}, 'abcd'),   # Too much padding
     ({constants.TOKEN_TYPE: 'str', 'choices': ['a', 'b', 'c']}, 'd'),  # Invalid choice
 ))
 def test_format_fail(token_config, value):

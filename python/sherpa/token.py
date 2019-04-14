@@ -154,7 +154,7 @@ class FloatToken(Token):
             # Add trailing 0s to meet the padding
             parts = str_value.split('.')
             decimal = parts[-1]
-            parts[-1] = format_padding(decimal, self._padding)
+            parts[-1] = format_padding(self.name, decimal, self._padding)
             str_value = '.'.join(parts)
         return str_value
 
@@ -180,7 +180,7 @@ class IntToken(Token):
         """
         str_value = super(IntToken, self).format(value)
         if self._padding:
-            str_value = format_padding(str_value, self._padding)
+            str_value = format_padding(self.name, str_value, self._padding)
         return str_value
 
 
@@ -322,15 +322,42 @@ class Case(object):
         return pattern
 
 
-def format_padding(string, padding, char='0', left=True):
-    num = min(i for i in padding if i)
-    extra = char * (num - len(string))
-    if extra:
+def format_padding(token_name, string, padding, char='0', left=True):
+    """
+    Adds additional characters to a string to fit the required padding
+
+    :raise FormatError: if string is greater than fixed padding length
+
+    :param str              token_name: Name of the token being padded
+    :param str              string: String to pad
+    :param tuple[int, int]  padding: Amount of padding expressed as (lo, hi)
+    :param str              char: Additional character to add
+    :param bool             left: Whether to add the padded characters to the
+                                  left or right
+    :rtype: str
+    """
+    lo, hi = padding
+    count = lo - len(string)
+    if count > 0:
+        extra = char * count
         string = (extra + string) if left else (string + extra)
+    elif count < 0 < hi:
+        raise FormatError(
+            'Value {} for token {!r} is greater than fixed padding: {}'.format(
+                string, token_name, hi
+            )
+        )
     return string
 
 
 def fits_padding(size, padding):
+    """
+    Whether or not the given size fits in the padding range
+
+    :param int              size:
+    :param tuple[int, int]   padding:
+    :rtype: bool
+    """
     if padding is None:
         return True
     lo, hi = padding
