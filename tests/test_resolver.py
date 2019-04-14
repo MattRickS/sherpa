@@ -62,18 +62,24 @@ def test_resolver(mock_config):
     }
 
 
-def test_missing_token():
+def test_missing_reference():
     config = {
         constants.KEY_TOKEN: {
             'token': 'str'
         },
         constants.KEY_PATHTEMPLATE: {
-            'path': '/path/{token}'
+            'path': '/path/{token}',
+            'folder': '{@path}/folder'
         }
     }
     # Ensure the valid config loads before removing the key and testing it fails
     TemplateResolver(config)
     config[constants.KEY_TOKEN].pop('token')
+    with pytest.raises(exceptions.TemplateResolverError):
+        TemplateResolver(config)
+
+    config[constants.KEY_TOKEN]['token'] = 'str'
+    config[constants.KEY_PATHTEMPLATE].pop('path')
     with pytest.raises(exceptions.TemplateResolverError):
         TemplateResolver(config)
 

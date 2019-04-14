@@ -116,7 +116,14 @@ class TemplateResolver(object):
         :param str  template_name:
         :rtype: Template
         """
-        template_string = self._config[template_type][template_name]
+        try:
+            template_string = self._config[template_type][template_name]
+        except KeyError:
+            raise exceptions.TemplateResolverError(
+                'Template {} {!r} does not exist'.format(
+                    template_type, template_name
+                )
+            )
 
         tokens = {}
         parent = None
