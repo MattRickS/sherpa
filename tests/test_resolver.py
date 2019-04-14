@@ -257,13 +257,6 @@ def test_from_file(mock_config):
     assert TemplateResolver.from_file(mock_config)
 
 
-def test_parse_path(mock_filesystem):
-    for filepath, data in mock_filesystem.filepaths.items():
-        template, fields = mock_filesystem.resolver.parse_path(filepath)
-        assert template.name == data['template']
-        assert fields == data['fields']
-
-
 def test_format_path(mock_filesystem):
     for filepath, data in mock_filesystem.filepaths.items():
         template = mock_filesystem.resolver.get_pathtemplate(data['template'])

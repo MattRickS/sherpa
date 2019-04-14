@@ -31,7 +31,7 @@ class PathTemplate(Template):
         """
         All immediate templates linked to this template, relatives and parent.
 
-        :rtype: list[Template]
+        :rtype: tuple[Template]
         """
         return ((self._parent, ) if self._parent else ()) + self._relatives
 

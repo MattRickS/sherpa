@@ -76,16 +76,6 @@ class TemplateResolver(object):
         """
         return self._tokens.copy()
 
-    def fields_from_path(self, path):
-        """
-        Convenience method that calls parse_path and discards the template
-
-        :param str  path:
-        :rtype: dict
-        """
-        template, fields = self.parse_path(path)
-        return fields
-
     def extract_closest_pathtemplate(self, path, directory=True):
         """
         Finds the template that extracts the greatest number of directories in 
@@ -142,39 +132,6 @@ class TemplateResolver(object):
         :rtype: token.Token
         """
         return self._tokens[token_name]
-
-    def parse_path(self, path):
-        """
-        :param str  path:
-        :rtype: tuple[Template, dict]
-        :return: Tuple of (matching template object, dictionary of parsed fields)
-        """
-        for template in self._templates.get(constants.KEY_PATHTEMPLATE, {}).values():
-            try:
-                fields = template.parse(path)
-                return template, fields
-            except ParseError:
-                continue
-        raise ParseError('No templates match the given path: {!r}'.format(path))
-
-    def paths_from_template(self, template_name, fields):
-        """
-        :param str  template_name:
-        :param dict fields:
-        :rtype: list[str]
-        """
-        template = self._get_template(constants.KEY_PATHTEMPLATE, template_name)
-        return template.paths(fields)
-
-    def template_from_path(self, path):
-        """
-        Convenience method that calls parse_path and discards the fields
-
-        :param str  path:
-        :rtype: Template
-        """
-        template, fields = self.parse_path(path)
-        return template
 
     def _get_template(self, template_type, template_name):
         template = self._templates.get(template_type, {}).get(template_name)
