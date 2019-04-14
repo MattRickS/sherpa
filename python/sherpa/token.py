@@ -1,7 +1,7 @@
 import re
 
 from sherpa import constants
-from sherpa.exceptions import FormatError, ParseError
+from sherpa import exceptions
 
 
 class Token(object):
@@ -22,7 +22,9 @@ class Token(object):
         # Ensure the default value is a valid choice, and all valid values are the correct type
         if choices:
             if default and default not in choices:
-                raise ValueError('Invalid default value for token {}'.format(name))
+                raise exceptions.TokenConfigError(
+                    'Invalid default value for token {}'.format(name)
+                )
             # Note: choices must be declared above as parse() requires it
             self._choices = [self.parse(str(token)) for token in choices]
 
@@ -89,11 +91,11 @@ class Token(object):
         try:
             value = self.type(value)
         except ValueError:
-            raise FormatError('Invalid value for {self}: {value}'.format(
+            raise exceptions.FormatError('Invalid value for {self}: {value}'.format(
                 self=self, value=value
             ))
         if self._choices and value not in self._choices:
-            raise FormatError(
+            raise exceptions.FormatError(
                 'Invalid value for {self}: {value}. Valid values: {choices}'.format(
                     self=self, value=value, choices=self._choices
                 )
@@ -110,7 +112,9 @@ class Token(object):
         """
         match = re.match('^' + self.regex + '$', token)
         if match is None:
-            raise ParseError('Token {!r} does not match pattern: {}'.format(token, self.regex))
+            raise exceptions.ParseError('Token {!r} does not match pattern: {}'.format(
+                token, self.regex
+            ))
 
         # Cast to type, particularly useful for int to float and vice versa.
         # Should never raise an exception as the regex should prevent it, but
@@ -118,11 +122,11 @@ class Token(object):
         try:
             token = self.type(token)
         except ValueError:
-            raise ParseError('Invalid datatype for {self}: {value}'.format(
+            raise exceptions.ParseError('Invalid datatype for {self}: {value}'.format(
                 self=self, value=token
             ))
         if self._choices and token not in self._choices:
-            raise ParseError(
+            raise exceptions.ParseError(
                 'Invalid value for token {self}: {value}. Valid values: {choices}'.format(
                     self=self, value=token, choices=self._choices
                 )
@@ -223,9 +227,11 @@ class StringToken(Token):
             return string
         # String cannot add padding
         if not fits_padding(len(string), self._padding):
-            raise FormatError('Value {value!r} does not fit padding: {padding}'.format(
-                value=string, padding=self._padding
-            ))
+            raise exceptions.FormatError(
+                'Value {value!r} does not fit padding: {padding}'.format(
+                    value=string, padding=self._padding
+                )
+            )
         if self._case == Case.Upper:
             string = string.upper()
         elif self._case == Case.Lower:
@@ -236,9 +242,11 @@ class StringToken(Token):
             string = string[0].upper() + string[1:]
         # Catch any blacklisted characters, ensure we match the whole string
         if not re.match('^' + self.regex + '$', string):
-            raise FormatError('Formatted string {value!r} does not match regex: {regex}'.format(
-                value=string, regex=self.regex
-            ))
+            raise exceptions.FormatError(
+                'Formatted string {value!r} does not match regex: {regex}'.format(
+                    value=string, regex=self.regex
+                )
+            )
         return string
 
 
@@ -342,7 +350,7 @@ def format_padding(token_name, string, padding, char='0', left=True):
         extra = char * count
         string = (extra + string) if left else (string + extra)
     elif count < 0 < hi:
-        raise FormatError(
+        raise exceptions.FormatError(
             'Value {} for token {!r} is greater than fixed padding: {}'.format(
                 string, token_name, hi
             )
@@ -366,7 +374,8 @@ def fits_padding(size, padding):
 
 def get_padding_range(padding_string):
     """
-    :raise ValueError: if given an invalid string, or padding is less than 0
+    :raise exceptions.TokenConfigError: if given an invalid string, or padding
+        is less than 0
     
     :param str  padding_string: A string indicating how much padding is required.
                          '+' indicates the value can extend in a direction, eg,
@@ -378,9 +387,13 @@ def get_padding_range(padding_string):
     try:
         num = int(padding_string.strip('+'))
     except ValueError:
-        raise ValueError('Padding must only contain an integer and an optional "+"')
+        raise exceptions.TokenConfigError(
+            'Padding must only contain an integer and an optional "+"'
+        )
     if num < 1:
-        raise ValueError('Padding cannot be less than 1: {}'.format(num))
+        raise exceptions.TokenConfigError(
+            'Padding cannot be less than 1: {}'.format(num)
+        )
     if padding_string.endswith('+'):
         return num, 0
     elif padding_string.startswith('+'):
@@ -393,14 +406,16 @@ def get_padding_regex(padding):
     """
     Gets a regex pattern matching the requested padding range
 
-    :raise ValueError:  if there is no integer value in the string, or the value
-                        is less than 1
+    :raise exceptions.TokenConfigError:  if there is no integer value in the
+        string, or the value is less than 1
 
     :rtype: str
     """
     lo, hi = padding
     if 0 < hi < lo:
-        raise ValueError('Padding max is less than min: {},{}'.format(lo, hi))
+        raise exceptions.TokenConfigError(
+            'Padding max is less than min: {},{}'.format(lo, hi)
+        )
     if lo == hi == 0:
         return '*'
     lo = max(lo, 1)
@@ -412,15 +427,26 @@ def get_padding_regex(padding):
 
 
 def get_token(token_name, config):
+    """
+    Creates a Token object from the token configuration
+
+    :raise exceptions.TokenConfigError: if any token configuration values are invalid
+
+    :param str  token_name:
+    :param dict config:
+    :rtype: Token
+    """
     # Pop the type key so that it's not passed to Token's init
     try:
         token_type = config.pop(constants.TOKEN_TYPE)
     except KeyError:
-        raise KeyError('Missing token type for token: {}'.format(token_name))
+        raise exceptions.TokenConfigError(
+            'Missing token type for token: {}'.format(token_name)
+        )
 
     cls = TOKEN_TYPES.get(token_type)
     if cls is None:
-        raise KeyError('Unknown token type for {!r}: {}'.format(
+        raise exceptions.TokenConfigError('Unknown token type for {!r}: {}'.format(
             token_name, token_type
         ))
 

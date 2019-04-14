@@ -16,3 +16,7 @@ class MissingTemplateError(TemplateResolverError):
 
 class MissingTokenError(TemplateResolverError):
     """ Error with a missing token """
+
+
+class TokenConfigError(TemplateResolverError):
+    """ Error with a configuration value for a token """

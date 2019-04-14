@@ -1,8 +1,8 @@
 import pytest
 
 from sherpa import constants
+from sherpa import exceptions
 from sherpa import token
-from sherpa.exceptions import ParseError, FormatError
 
 
 @pytest.mark.parametrize('string_type, cls', (
@@ -14,15 +14,13 @@ def test_get_token(string_type, cls):
     assert token.get_token('name', {constants.TOKEN_TYPE: string_type}).__class__ == cls
 
 
-@pytest.mark.parametrize('fields, exception', (
-    ({'case': token.Case.Lower}, KeyError),    # no token type
-    ({constants.TOKEN_TYPE: None}, KeyError),  # Unknown token type
-    ({constants.TOKEN_TYPE: 'str',
-      'default': 'abc',
-      'choices': ['a', 'b']}, ValueError),      # Default not in choices
+@pytest.mark.parametrize('fields', (
+    {'case': token.Case.Lower},    # no token type
+    {constants.TOKEN_TYPE: None},  # Unknown token type
+    {constants.TOKEN_TYPE: 'str', 'default': 'abc', 'choices': ['a', 'b']},  # Default not in choices
 ))
-def test_get_token_fail(fields, exception):
-    with pytest.raises(exception):
+def test_get_token_fail(fields):
+    with pytest.raises(exceptions.TokenConfigError):
         assert token.get_token('name', fields)
 
 
@@ -37,7 +35,7 @@ def test_get_padding_range(string, expected):
 
 @pytest.mark.parametrize('string', ('8a', '+0', '0', '0+'))
 def test_get_padding_range_fail(string):
-    with pytest.raises(ValueError):
+    with pytest.raises(exceptions.TokenConfigError):
         token.get_padding_range(string)
 
 
@@ -53,7 +51,7 @@ def test_get_padding_regex(padding, expected):
 
 
 def test_get_padding_regex_fail():
-    with pytest.raises(ValueError):
+    with pytest.raises(exceptions.TokenConfigError):
         token.get_padding_regex((3, 1))
 
 
@@ -154,7 +152,7 @@ def test_parse(token_config, string, expected):
 ))
 def test_parse_fail(token_config, string):
     token_obj = token.get_token('name', token_config)
-    with pytest.raises(ParseError):
+    with pytest.raises(exceptions.ParseError):
         token_obj.parse(string)
 
 
@@ -190,7 +188,7 @@ def test_format(token_config, value, expected):
 ))
 def test_format_fail(token_config, value):
     token_obj = token.get_token('name', token_config)
-    with pytest.raises(FormatError):
+    with pytest.raises(exceptions.FormatError):
         token_obj.format(value)
 
 
