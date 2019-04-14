@@ -1,5 +1,5 @@
 from sherpa import constants
-from sherpa.exceptions import ParseError
+from sherpa import exceptions
 from sherpa.pathtemplate import PathTemplate
 from sherpa.template import Template
 from sherpa import token
@@ -69,7 +69,7 @@ class TemplateResolver(object):
             try:
                 match_path, fields, relative = template.extract(path, directory=directory)
                 matches[relative.count('/')] = (template, match_path, fields, relative)
-            except ParseError:
+            except exceptions.ParseError:
                 continue
         return matches[min(matches)]
 
@@ -136,7 +136,14 @@ class TemplateResolver(object):
                 relatives.append(template)
             else:
                 # Extract local tokens, validate against loaded Tokens
-                tokens[token_name] = self._tokens[token_name]
+                try:
+                    tokens[token_name] = self._tokens[token_name]
+                except KeyError:
+                    raise exceptions.TemplateResolverError(
+                        'Token {!r} required by {} {!r} does not exist'.format(
+                            token_name, template_type, template_name
+                        )
+                    )
 
         if template_type == constants.KEY_PATHTEMPLATE:
             template = PathTemplate(

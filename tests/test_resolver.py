@@ -5,6 +5,7 @@ import pytest
 import yaml
 
 from sherpa import constants
+from sherpa import exceptions
 from sherpa.resolver import TemplateResolver
 from sherpa.template import Template
 
@@ -59,6 +60,22 @@ def test_resolver(mock_config):
         'variant',
         'seq',
     }
+
+
+def test_missing_token():
+    config = {
+        constants.KEY_TOKEN: {
+            'token': 'str'
+        },
+        constants.KEY_PATHTEMPLATE: {
+            'path': '/path/{token}'
+        }
+    }
+    # Ensure the valid config loads before removing the key and testing it fails
+    TemplateResolver(config)
+    config[constants.KEY_TOKEN].pop('token')
+    with pytest.raises(exceptions.TemplateResolverError):
+        TemplateResolver(config)
 
 
 class MockFilesystem(object):
