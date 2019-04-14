@@ -2,9 +2,11 @@ import os
 import shutil
 
 import pytest
+import yaml
 
 from sherpa import constants
 from sherpa.resolver import TemplateResolver
+from sherpa.template import Template
 
 
 @pytest.fixture(scope='module')
@@ -15,6 +17,48 @@ def mock_directory(request):
 @pytest.fixture(scope='module')
 def mock_config(mock_directory):
     return str(mock_directory.join('templates.yml'))
+
+
+def test_resolver(mock_config):
+    with open(mock_config) as f:
+        config = yaml.load(f)
+    resolver = TemplateResolver(config)
+
+    template = resolver.get_nametemplate('variant_entity')
+    assert type(template) is Template
+    assert set(template.tokens) == {'variant', 'entity'}
+    template = resolver.get_nametemplate('project')
+    assert type(template) is Template
+    assert template.name == 'project'
+    assert template.tokens == {'project': resolver.get_token('project')}
+
+    with pytest.raises(KeyError):
+        resolver.get_nametemplate('project', allow_tokens=False)
+
+    assert set(resolver.nametemplates) == {'variant_entity'}
+    assert set(resolver.pathtemplates) == {
+        'root',
+        'storage',
+        'project',
+        'category',
+        'entity',
+        'task',
+        'publish',
+        'filename',
+        'sequence'
+    }
+    assert set(resolver.tokens) == {
+        'project',
+        'storage',
+        'category',
+        'entity',
+        'task',
+        'publish_type',
+        'version',
+        'extension',
+        'variant',
+        'seq',
+    }
 
 
 class MockFilesystem(object):

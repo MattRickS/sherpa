@@ -30,7 +30,7 @@ paths:
   category: '{@project}/{category}'
   entity: '{@category}/{entity}'
   task: '{@entity}/{task}'
-  publish: '{@task}/publishes/{publish_type}/v{version}/{entity}_{publish_type}_v{version}.{extension}'
+  publish: '{@task}/publishes/{publish_type}/v{version}/{@filename}'
 
   filename: '{#variant_entity}.{extension}'
   sequence: '/path/to/{seq}.{extension}'
