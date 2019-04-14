@@ -8,3 +8,11 @@ class FormatError(TemplateResolverError):
 
 class ParseError(TemplateResolverError):
     """ Failure to parse a value """
+
+
+class MissingTemplateError(TemplateResolverError):
+    """ Error with a missing template of any type """
+
+
+class MissingTokenError(TemplateResolverError):
+    """ Error with a missing token """

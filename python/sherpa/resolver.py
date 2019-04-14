@@ -82,7 +82,7 @@ class TemplateResolver(object):
         """
         try:
             template = self._get_template(constants.KEY_NAMETEMPLATE, template_name)
-        except KeyError:
+        except exceptions.MissingTemplateError:
             if not allow_tokens:
                 raise
             token_obj = self._tokens[template_name]
@@ -119,7 +119,7 @@ class TemplateResolver(object):
         try:
             template_string = self._config[template_type][template_name]
         except KeyError:
-            raise exceptions.TemplateResolverError(
+            raise exceptions.MissingTemplateError(
                 'Template {} {!r} does not exist'.format(
                     template_type, template_name
                 )
@@ -146,7 +146,7 @@ class TemplateResolver(object):
                 try:
                     tokens[token_name] = self._tokens[token_name]
                 except KeyError:
-                    raise exceptions.TemplateResolverError(
+                    raise exceptions.MissingTokenError(
                         'Token {!r} required by {} {!r} does not exist'.format(
                             token_name, template_type, template_name
                         )

@@ -33,7 +33,7 @@ def test_resolver(mock_config):
     assert template.name == 'project'
     assert template.tokens == {'project': resolver.get_token('project')}
 
-    with pytest.raises(KeyError):
+    with pytest.raises(exceptions.MissingTemplateError):
         resolver.get_nametemplate('project', allow_tokens=False)
 
     assert set(resolver.nametemplates) == {'variant_entity'}
@@ -75,12 +75,12 @@ def test_missing_reference():
     # Ensure the valid config loads before removing the key and testing it fails
     TemplateResolver(config)
     config[constants.KEY_TOKEN].pop('token')
-    with pytest.raises(exceptions.TemplateResolverError):
+    with pytest.raises(exceptions.MissingTokenError):
         TemplateResolver(config)
 
     config[constants.KEY_TOKEN]['token'] = 'str'
     config[constants.KEY_PATHTEMPLATE].pop('path')
-    with pytest.raises(exceptions.TemplateResolverError):
+    with pytest.raises(exceptions.MissingTemplateError):
         TemplateResolver(config)
 
 
