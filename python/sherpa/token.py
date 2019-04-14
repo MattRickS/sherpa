@@ -81,7 +81,6 @@ class Token(object):
         """
         # Wildcards cannot be validated and must respect padding. Padding ranges
         # can't use an explicit number of wildcards
-        # TODO: Parse strings after searching with formatted wilcards on padded ranges
         if value in (constants.WILDCARD, constants.WILDCARD_ONE):
             if self._padding and self._padding[0] == self._padding[1]:
                 return constants.WILDCARD_ONE * self._padding[0]
@@ -112,6 +111,10 @@ class Token(object):
         match = re.match('^' + self.regex + '$', token)
         if match is None:
             raise ParseError('Token {!r} does not match pattern: {}'.format(token, self.regex))
+
+        # Cast to type, particularly useful for int to float and vice versa.
+        # Should never raise an exception as the regex should prevent it, but
+        # kept to provide a more explicit error message if anything slips past
         try:
             token = self.type(token)
         except ValueError:
@@ -303,6 +306,7 @@ class Case(object):
             mid += constants.NUMBER_PATTERN
 
         # For tidiness sake, compress identical patterns
+        regex_padding = '+'
         if start == mid:
             pattern = '[{}]'.format(start)
         else:
@@ -310,9 +314,11 @@ class Case(object):
             # Offset by -1 as the first character is already defined
             if padding:
                 lo, hi = padding
-                padding = (lo - int(lo == hi), max(hi - 1, 0))
+                padding = (lo - int(lo >= hi), max(hi - 1, 0))
+            else:
+                regex_padding = '*'
 
-        pattern += get_padding_regex(padding) if padding else '*'
+        pattern += get_padding_regex(padding) if padding else regex_padding
         return pattern
 
 
@@ -331,23 +337,26 @@ def fits_padding(size, padding):
     return lo <= size <= hi if hi else lo <= size
 
 
-def get_padding_range(padding):
+def get_padding_range(padding_string):
     """
-
-
-    :param str  padding: A string indicating how much padding is required.
+    :raise ValueError: if given an invalid string, or padding is less than 0
+    
+    :param str  padding_string: A string indicating how much padding is required.
                          '+' indicates the value can extend in a direction, eg,
                          '3+' indicates 3 or more, while '+3' is up to 3. If no
                          '+' is given, the padding is a fixed length.
     :rtype: tuple[int, int]
     """
     # Cast to int to ensure the pattern is valid
-    num = int(padding.strip('+'))
+    try:
+        num = int(padding_string.strip('+'))
+    except ValueError:
+        raise ValueError('Padding must only contain an integer and an optional "+"')
     if num < 1:
         raise ValueError('Padding cannot be less than 1: {}'.format(num))
-    if padding.endswith('+'):
+    if padding_string.endswith('+'):
         return num, 0
-    elif padding.startswith('+'):
+    elif padding_string.startswith('+'):
         return 1, num
     else:
         return num, num
@@ -396,18 +405,3 @@ def get_token(token_name, config):
     # Let Token validate itself, will raise any errors
     token = cls(token_name, **config)
     return token
-
-
-if __name__ == '__main__':
-    for case in (Case.Lower, Case.Upper, Case.LowerCamel, Case.UpperCamel):
-        for numbers in (True, False):
-            for padding in (None, (3, 0), (1, 3), (3, 3)):
-                print('-' * 20)
-                print(case, numbers, padding)
-                token = StringToken('one', case=case, padding=padding, numbers=numbers)
-                print(token.regex)
-                for val in ('oneTwo', 'three', 'one1', 'THREE'):
-                    try:
-                        print('Parsed:', token.parse(val))
-                    except ParseError:
-                        print('Cannot parse: {!r}'.format(val))
