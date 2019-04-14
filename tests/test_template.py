@@ -3,6 +3,7 @@ from collections import namedtuple
 import pytest
 
 from sherpa import constants
+from sherpa import exceptions
 from sherpa import token
 from sherpa.template import Template
 
@@ -102,6 +103,25 @@ def test_format(mock_templates):
 def test_parse(mock_templates):
     for mock_template in mock_templates:
         assert mock_template.template.parse(mock_template.path) == mock_template.fields
+
+
+def test_parse_fail():
+    template = Template('name', '/{token}/{token}',
+                        tokens={'token': token.get_token('token', {constants.TOKEN_TYPE: 'str'})})
+    assert template.parse('/abc/abc') == {'token': 'abc'}
+    with pytest.raises(exceptions.ParseError):
+        template.parse('/abc/def')
+
+
+def test_format_fail():
+    template = Template('name', '/{foo}/{bar}',
+                        tokens={
+                            'foo': token.get_token('foo', {constants.TOKEN_TYPE: 'str'}),
+                            'bar': token.get_token('bar', {constants.TOKEN_TYPE: 'str'}),
+                        })
+    assert template.format({'foo': 'foo', 'bar': 'bar'}) == '/foo/bar'
+    with pytest.raises(exceptions.FormatError):
+        template.format({'foo': 'foo'})
 
 
 def test_from_token():
