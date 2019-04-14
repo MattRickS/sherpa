@@ -76,6 +76,14 @@ def mock_templates():
     return [mta, mtb, mtc, mtd]
 
 
+def test_repr():
+    template = PathTemplate('test', '/path/to/{test}', tokens={'test': token.get_token('test', {constants.TOKEN_TYPE: 'str'})})
+    assert repr(template) == (
+        "PathTemplate('test', '/path/to/{test}', parent=None, relatives=(), "
+        "tokens={'test': StringToken('test', default=None, choices=None, padding=None)})"
+    )
+
+
 def test_parent(mock_templates):
     for mock_template in mock_templates:
         assert mock_template.template.parent == mock_template.parent
