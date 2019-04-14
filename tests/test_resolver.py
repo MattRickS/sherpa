@@ -248,15 +248,6 @@ def mock_filesystem(mock_directory):
     filesystem.remove()
 
 
-def test_from_environment(mock_config):
-    os.environ[constants.ENV_VAR] = mock_config
-    assert TemplateResolver.from_environment()
-
-
-def test_from_file(mock_config):
-    assert TemplateResolver.from_file(mock_config)
-
-
 def test_format_path(mock_filesystem):
     for filepath, data in mock_filesystem.filepaths.items():
         template = mock_filesystem.resolver.get_pathtemplate(data['template'])
