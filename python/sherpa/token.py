@@ -216,6 +216,8 @@ class StringToken(Token):
 
     def format(self, value):
         string = super(StringToken, self).format(value)
+        if string == constants.WILDCARD or all(char == constants.WILDCARD_ONE for char in string):
+            return string
         # String cannot add padding
         if not fits_padding(len(string), self._padding):
             raise FormatError('Value {value!r} does not fit padding: {padding}'.format(

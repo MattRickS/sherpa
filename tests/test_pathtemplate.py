@@ -1,7 +1,9 @@
+import os
 from collections import namedtuple
 
 import pytest
 
+from sherpa import constants
 from sherpa import token
 from sherpa.pathtemplate import PathTemplate
 
@@ -119,3 +121,40 @@ def test_extract_specific():
     assert project.extract('/projects/path/to/something.ext') == ('/projects/path', {'project': 'path'}, 'to/something.ext')
     assert project.extract('/projects/path/to/something.ext', directory=False) == ('/projects/path', {'project': 'path'}, '/to/something.ext')
 
+
+@pytest.mark.parametrize('token_configs, template_pattern, glob_pattern, paths, expected', (
+    # Standard pattern and parse behaviour
+    (
+        {'project': {constants.TOKEN_TYPE: 'str'}, 'version': {constants.TOKEN_TYPE: 'int'}},
+        '/project/{project}/v{version}',
+        '/project/*/v*',
+        ['/project/one/v001', '/project/one/v002', '/project/two/v001'],
+        {os.path.normpath('/project/one/v001'): {'project': 'one', 'version': 1},
+         os.path.normpath('/project/one/v002'): {'project': 'one', 'version': 2},
+         os.path.normpath('/project/two/v001'): {'project': 'two', 'version': 1}}
+    ),
+    # Glob pattern uses multiple single wildcards for fixed padding length
+    (
+        {'project': {constants.TOKEN_TYPE: 'str', 'padding': '3'}},
+        '/project/{project}',
+        '/project/???',
+        ['/project/one', '/project/two'],
+        {os.path.normpath('/project/one'): {'project': 'one'},
+         os.path.normpath('/project/two'): {'project': 'two'}}
+    ),
+    # Glob pattern with ranged padding should use generic wildcard and filter
+    # the results with the correct regex pattern
+    (
+        {'project': {constants.TOKEN_TYPE: 'str', 'padding': '4+'}},
+        '/project/{project}',
+        '/project/*',
+        ['/project/one', '/project/two', '/project/three'],
+        {os.path.normpath('/project/three'): {'project': 'three'}}
+    ),
+))
+def test_paths(mocker, token_configs, template_pattern, glob_pattern, paths, expected):
+    mock = mocker.patch('glob.iglob', return_value=paths)
+    tokens = {name: token.get_token(name, cfg) for name, cfg in token_configs.items()}
+    template = PathTemplate('test', template_pattern, tokens=tokens)
+    assert template.paths({}) == expected
+    mock.assert_called_once_with(glob_pattern)

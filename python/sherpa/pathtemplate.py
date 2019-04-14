@@ -2,6 +2,7 @@ import glob
 import os
 
 from sherpa import constants
+from sherpa import exceptions
 from sherpa.template import Template
 from sherpa.token import Token
 
@@ -97,13 +98,14 @@ class PathTemplate(Template):
 
     def paths(self, fields, use_defaults=False):
         """
-        Returns the paths on disk that match the given fields by using wildcards
+        Finds the paths on disk that match the given fields by using wildcards
         for missing values.
 
         :param dict fields:         Dictionary of fields and their values
         :param bool use_defaults:   Whether or not to use default token values
                                     for missing fields instead of wildcards.
-        :rtype: list[str]
+        :return: Dictionary mapping filepaths to their fields
+        :rtype: dict[str, dict]
         """
         tokens = fields.copy()
         for f, t in self.missing(fields, ignore_defaults=True).items():
@@ -111,22 +113,18 @@ class PathTemplate(Template):
             tokens[f] = (t.default if use_defaults else None) or constants.WILDCARD
 
         pattern = self.format(tokens)
-        return [os.path.normpath(p) for p in glob.iglob(pattern)]
 
-    def values_from_paths(self, field, fields, use_defaults=False):
-        """
-        Finds all paths on disk that match the given fields and extracts the
-        value for the requested field in each path.
+        # Glob a simple wildcard pattern to retrieve all matching files, then
+        # parse using the more precise regex pattern
+        paths = {}
+        for path in glob.iglob(pattern):
+            try:
+                fields = self.parse(path)
+            except exceptions.ParseError:
+                continue
+            paths[os.path.normpath(path)] = fields
 
-        :param str                  field:
-        :param dict[str, object]    fields:
-        :param bool                 use_defaults:
-        :rtype: dict[object, str]
-        """
-        fields[field] = constants.WILDCARD
-        paths = self.paths(fields, use_defaults)
-        path_fields = {self.parse(p)[field]: p for p in paths}
-        return path_fields
+        return paths
 
     def _parse(self, string, regex):
         string = string.replace(os.path.sep, '/')
