@@ -10,13 +10,17 @@ class ParseError(TemplateResolverError):
     """ Failure to parse a value """
 
 
-class MissingTemplateError(TemplateResolverError):
+class ConfigError(TemplateResolverError):
+    """ Any errors raised from reading a template/token configuration """
+
+
+class MissingTemplateError(ConfigError):
     """ Error with a missing template of any type """
 
 
-class MissingTokenError(TemplateResolverError):
+class MissingTokenError(ConfigError):
     """ Error with a missing token """
 
 
-class TokenConfigError(TemplateResolverError):
+class TokenConfigError(ConfigError):
     """ Error with a configuration value for a token """
