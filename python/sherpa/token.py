@@ -458,3 +458,29 @@ def get_token(token_name, config):
     # Let Token validate itself, will raise any errors
     token = cls(token_name, **config)
     return token
+
+
+def clashes(tokens):
+    """
+    Returns a dictionary mapping the indexes of all tokens in the list who clash,
+    grouped by their clashing 'type' name.
+
+    :param list[Token]|tuple[Token, ...]  tokens: List of tokens to compare
+    :rtype: dict[str, tuple[Token, ...]]
+    """
+    # Collect tokens who use the same type
+    type_mapping = {}
+    for idx, token in enumerate(tokens):
+        if isinstance(token, StringToken):
+            # None matches both cases
+            if token.case in (Case.Lower, Case.LowerCamel, None):
+                type_mapping.setdefault(Case.Lower, []).append(idx)
+            if token.case in (Case.Upper, Case.UpperCamel, None):
+                type_mapping.setdefault(Case.Upper, []).append(idx)
+            # Strings can also count as integers if numbers=True
+            if token.numbers:
+                type_mapping.setdefault('int', []).append(idx)
+        else:
+            type_mapping.setdefault(token.type.__name__, []).append(idx)
+
+    return {k: v for k, v in type_mapping.items() if len(v) > 1}

@@ -24,3 +24,7 @@ class MissingTokenError(ConfigError):
 
 class TokenConfigError(ConfigError):
     """ Error with a configuration value for a token """
+
+
+class TemplateValidationError(ConfigError):
+    """ Errors with template validation """

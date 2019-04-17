@@ -1,3 +1,5 @@
+import re
+
 from sherpa import constants
 from sherpa import exceptions
 from sherpa.pathtemplate import PathTemplate
@@ -102,6 +104,94 @@ class TemplateResolver(object):
         :rtype: token.Token
         """
         return self._tokens[token_name]
+
+    def validate(self, raise_error=True):
+        """
+        Validates the each template pattern is unique. Returns a list of all
+        groupings of template names which collide.
+
+        Two templates are considered to be non-unique when their fixed path
+        strings are identical, and all tokens could potentially resolve to the
+        same values. Tokens that can resolve to the same value are pairings such
+        as tokens of the same type, or an IntToken and a StringToken that allows
+        numbers.
+
+        Example:
+            +----------+--------+--------+--------+--------+
+            |          | token1 | token2 | token3 | token4 |
+            +==========+========+========+========+========+
+            |templateA |   X    |   X    |   X    |   X    |
+            +----------+--------+--------+--------+--------+
+            |templateB |   \-   |   X    |   X    |   X    |
+            +----------+--------+--------+--------+--------+
+            |templateC |   X    |   \-   |   \-   |   X    |
+            +----------+--------+--------+--------+--------+
+
+            The above would be valid, as although template A has a clash for
+            every token, there is no one template that could match it.
+
+        :raise TemplateValidationError: if any templates are not unique and
+            raise_error is True
+        :param bool raise_error: If True, raises TemplateValidationError for any
+            conflicting templates
+        :rtype: list[tuple[str, ...]]
+        """
+        # Validate that all patterns are unique.
+        patterns = {}
+        for template in self._templates[constants.KEY_PATHTEMPLATE].values():
+            # Split the pattern by it's tokens, and extract the fixed path
+            # segments to use as a unique key for the template. Map this key
+            # to the ordered array of tokens.
+            # Eg, {(path, ...): {template_name: (token, ...)}}
+            parts = re.split('[{}]', template.pattern)
+            fixed = tuple(parts[::2])
+            ordered_tokens = tuple(self._tokens[name] for name in parts[1::2])
+            patterns.setdefault(fixed, {})[template.name] = ordered_tokens
+
+        # For any mapping that has multiple token sets, (ie, the fixed path
+        # segments are identical, and the pattern only varies by tokens), check
+        # if any of the tokens could possibly resolve the same value. If all
+        # tokens could potentially resolve the same pattern, the template's are
+        # not unique
+        clashing_templates = []
+        for data in patterns.values():
+            # Must be at least two matching templates to possibly clash
+            if len(data) < 2:
+                continue
+            # Split the data into two ordered lists
+            template_names, token_sets = zip(*data.items())
+            clashing = set()
+            # Iterate over each set of tokens by index in which they appear
+            for idx, tokens in enumerate(zip(*token_sets)):
+                # Get a list of all groups of indexes that clash. These indexes
+                # are their position in the ordered list of tokens, which is the
+                # same order as the template names.
+                clashing_indexes = {tuple(indexes) for indexes in token.clashes(tokens).values()}
+                # Only need to track clashes that are in ALL token sets, so if a
+                # clash of indexes appears that hasn't clashed in previous
+                # tokens, it can be ignored.
+                # The exception is the first comparison which is the initial set
+                # of clashing templates
+                if idx == 0:
+                    if not clashing_indexes:
+                        break
+                    clashing = clashing_indexes
+                else:
+                    clashing &= clashing_indexes
+                if not clashing:
+                    break
+
+            # Any indexes which are still clashing at the end can be mapped to
+            # their respective template names
+            for indexes in clashing:
+                clashing_templates.append(tuple(template_names[i] for i in indexes))
+
+        if clashing_templates and raise_error:
+            raise exceptions.TemplateValidationError(
+                'Templates clash: {}'.format(clashing_templates)
+            )
+
+        return clashing_templates
 
     def _get_template(self, template_type, template_name):
         template = self._templates.get(template_type, {}).get(template_name)
