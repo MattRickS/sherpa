@@ -188,7 +188,9 @@ class TemplateResolver(object):
 
         if clashing_templates and raise_error:
             raise exceptions.TemplateValidationError(
-                'Templates clash: {}'.format(clashing_templates)
+                'Some templates can resolve to the same filepath: {}'.format(
+                    clashing_templates
+                )
             )
 
         return clashing_templates
