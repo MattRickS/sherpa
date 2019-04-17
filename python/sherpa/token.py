@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 
 from sherpa import constants
 from sherpa import exceptions
@@ -469,18 +470,18 @@ def clashes(tokens):
     :rtype: dict[str, tuple[Token, ...]]
     """
     # Collect tokens who use the same type
-    type_mapping = {}
+    type_mapping = defaultdict(list)
     for idx, token in enumerate(tokens):
         if isinstance(token, StringToken):
             # None matches both cases
             if token.case in (Case.Lower, Case.LowerCamel, None):
-                type_mapping.setdefault(Case.Lower, []).append(idx)
+                type_mapping[Case.Lower].append(idx)
             if token.case in (Case.Upper, Case.UpperCamel, None):
-                type_mapping.setdefault(Case.Upper, []).append(idx)
+                type_mapping[Case.Upper].append(idx)
             # Strings can also count as integers if numbers=True
             if token.numbers:
-                type_mapping.setdefault('int', []).append(idx)
+                type_mapping['int'].append(idx)
         else:
-            type_mapping.setdefault(token.type.__name__, []).append(idx)
+            type_mapping[token.type.__name__].append(idx)
 
     return {k: v for k, v in type_mapping.items() if len(v) > 1}
