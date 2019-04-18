@@ -330,6 +330,11 @@ class Case(object):
         pattern += get_padding_regex(padding) if padding else regex_padding
         return pattern
 
+    @classmethod
+    def matches(cls, case, string):
+        # type: (str, str) -> bool
+        return bool(re.match(cls.get_regex(case), string))
+
 
 def format_padding(token_name, string, padding, char='0', left=True):
     """
@@ -470,18 +475,31 @@ def clashes(tokens):
     :rtype: dict[str, tuple[Token, ...]]
     """
     # Collect tokens who use the same type
-    type_mapping = defaultdict(list)
+    type_mapping = defaultdict(set)
     for idx, token in enumerate(tokens):
+
         if isinstance(token, StringToken):
+            # If a string has explicit tokens, only add the mappings for the
+            # cases it can clash with. Note, choices for other datatype will
+            # still always be that type so need not be considered
+            if token.choices:
+                for choice in token.choices:
+                    for case in (Case.Lower, Case.LowerCamel):
+                        if Case.matches(case, choice):
+                            type_mapping[Case.Lower].add(idx)
+                    for case in (Case.Upper, Case.UpperCamel):
+                        if Case.matches(case, choice):
+                            type_mapping[Case.Upper].add(idx)
+                continue
             # None matches both cases
             if token.case in (Case.Lower, Case.LowerCamel, None):
-                type_mapping[Case.Lower].append(idx)
+                type_mapping[Case.Lower].add(idx)
             if token.case in (Case.Upper, Case.UpperCamel, None):
-                type_mapping[Case.Upper].append(idx)
+                type_mapping[Case.Upper].add(idx)
             # Strings can also count as integers if numbers=True
             if token.numbers:
-                type_mapping['int'].append(idx)
+                type_mapping['int'].add(idx)
         else:
-            type_mapping[token.type.__name__].append(idx)
+            type_mapping[token.type.__name__].add(idx)
 
     return {k: v for k, v in type_mapping.items() if len(v) > 1}
