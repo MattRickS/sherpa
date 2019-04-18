@@ -328,7 +328,7 @@ def test_format_path(mock_filesystem):
     ('/projects/path/to/something.ext', False, 'sequence', '/projects/path/to/something', '.ext'),
 ))
 def test_extract_closest_template(path, directory, template, start, end):
-    pr = TemplateResolver({
+    resolver = TemplateResolver({
         constants.KEY_TOKEN: {
             'project': 'str',
             'storage': 'str',
@@ -341,8 +341,32 @@ def test_extract_closest_template(path, directory, template, start, end):
             'sequence': '{@storage}/{sequence}',
         }
     })
-    results = pr.extract_closest_pathtemplate(path, directory=directory)
-    template = pr.get_pathtemplate(template)
+    results = resolver.extract_closest_pathtemplate(path, directory=directory)
+    template = resolver.get_pathtemplate(template)
     assert results[0] == template
     assert results[1] == start
     assert results[3] == end
+
+
+def test_validate_unique_paths():
+    resolver = TemplateResolver({
+        constants.KEY_TOKEN: {
+            'int': 'int',
+            'float': 'float',
+            'sequence': 'sequence',
+            'str': 'str',
+        },
+        constants.KEY_PATHTEMPLATE: {
+            'one': '/{int}/{str}',
+            'two': '/{int}/{str}',
+            'three': '/{str}/{str}/{float}',
+            'four': '/{str}/{sequence}/{float}',
+            'five': '/{str}/{int}',
+            'six': '/{str}',
+        }
+    })
+    with pytest.raises(exceptions.TemplateValidationError):
+        resolver.validate_unique_paths(raise_error=True)
+    assert set(resolver.validate_unique_paths(raise_error=False)) == {
+        ('five', 'two', 'one'), ('four', 'three'),
+    }

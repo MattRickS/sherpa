@@ -105,7 +105,7 @@ class TemplateResolver(object):
         """
         return self._tokens[token_name]
 
-    def validate(self, raise_error=True):
+    def validate_unique_paths(self, raise_error=True):
         """
         Validates the each template pattern is unique. Returns a list of all
         groupings of template names which collide.
@@ -165,8 +165,10 @@ class TemplateResolver(object):
             for idx, tokens in enumerate(zip(*token_sets)):
                 # Get a list of all groups of indexes that clash. These indexes
                 # are their position in the ordered list of tokens, which is the
-                # same order as the template names.
-                clashing_indexes = {tuple(indexes) for indexes in token.clashes(tokens).values()}
+                # same order as the template names. Must be sorted to guarantee
+                # sets can compare
+                clashing_indexes = {tuple(sorted(indexes))
+                                    for indexes in token.clashes(tokens).values()}
                 # Only need to track clashes that are in ALL token sets, so if a
                 # clash of indexes appears that hasn't clashed in previous
                 # tokens, it can be ignored.
