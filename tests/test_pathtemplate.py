@@ -77,10 +77,10 @@ def mock_templates():
 
 
 def test_repr():
-    template = PathTemplate('test', '/path/to/{test}', tokens=(token.get_token('test', {constants.TOKEN_TYPE: 'str'}),))
+    template = PathTemplate('test', '/path/to/{test}', tokens=(token.IntToken('test'),))
     assert repr(template) == (
         "PathTemplate('test', '/path/to/{test}', parent=None, relatives=(), "
-        "tokens={'test': StringToken('test', default=None, choices=None, padding=None)})"
+        "tokens={'test': IntToken('test', default=None, choices=None, padding=None)})"
     )
 
 

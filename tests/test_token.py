@@ -238,3 +238,23 @@ def test_case():
 def test_numbers():
     token_obj = token.get_token('test', {constants.TOKEN_TYPE: 'str', 'numbers': True})
     assert token_obj.numbers is True
+
+
+@pytest.mark.parametrize('tokens, expected', (
+    ([token.StringToken(''), token.FloatToken(''), token.IntToken('')], {'int': {0, 2}}),
+    ([token.StringToken(''), token.FloatToken(''), token.IntToken(''), token.SequenceToken('')],
+     {'int': {0, 2, 3}}),
+    ([token.StringToken('', numbers=False), token.FloatToken(''), token.IntToken('')], {}),
+    ([token.StringToken('', case=token.Case.Lower, numbers=False),
+      token.StringToken('', case=token.Case.Upper, numbers=False)], {}),
+    ([token.StringToken('', choices=['a']), token.StringToken('', choices=['A'])], {}),
+    ([token.StringToken('', choices=['a']), token.StringToken('', choices=['abCd'])],
+     {'lower': {0, 1}}),
+    ([token.StringToken(''),
+      token.StringToken('', case=token.Case.Lower, numbers=False),
+      token.IntToken('')], {'int': {0, 2}, 'lower': {0, 1}}),
+    ([token.StringToken(''), token.StringToken('')],
+     {'int': {0, 1}, 'lower': {0, 1}, 'upper': {0, 1}})
+))
+def test_clashes(tokens, expected):
+    assert token.clashes(tokens) == expected

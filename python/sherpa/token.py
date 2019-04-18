@@ -207,6 +207,11 @@ class StringToken(Token):
         # Initialise regex before calling super as the init parses the default/choices
         super(StringToken, self).__init__(name, default=default, choices=choices, padding=padding)
 
+    def __repr__(self):
+        return ('{s.__class__.__name__}({s._name!r}, default={s._default!r}, '
+                'choices={s._choices!r}, padding={s._padding!r}, case={s._case!r}, '
+                'numbers={s._numbers})'.format(s=self))
+
     @property
     def case(self):
         # type: () -> str
