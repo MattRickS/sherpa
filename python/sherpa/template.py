@@ -218,7 +218,7 @@ class Template(object):
         # Walk through this template's string and replace any references to
         # other templates with that template's pattern.
         last_idx = 0
-        self._pattern = ''
+        segments = []
         for match in constants.MATCH_PATTERN.finditer(self._config_string):
             # We only care about templates, preserve token patterns
             is_template, name = match.groups()
@@ -233,9 +233,10 @@ class Template(object):
             start, end = match.span()
             relative_template = linked_templates[name]
             ordered_fields += relative_template.ordered_fields
-            self._pattern += self._config_string[last_idx:start] + relative_template.pattern
+            segments.extend((self._config_string[last_idx:start], relative_template.pattern))
             last_idx = end
 
         # Add any remaining string
-        self._pattern += self._config_string[last_idx:]
+        segments.append(self._config_string[last_idx:])
+        self._pattern = ''.join(segments)
         self._ordered_fields = tuple(ordered_fields)
