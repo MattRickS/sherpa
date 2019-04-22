@@ -221,7 +221,7 @@ class Template(object):
         last_idx = 0
         regex_segments = []
         pattern_segments = []
-        for match in constants.MATCH_PATTERN.finditer(self._config_string):
+        for match in constants.PATTERN_MATCH.finditer(self._config_string):
             # We only care about templates, preserve token patterns
             template_type, name = match.groups()
             if not template_type:
@@ -259,6 +259,6 @@ class Template(object):
 
 class NameTemplate(Template):
     def __init__(self, name, config_string, relatives=None, tokens=None):
-        if constants.PATH_SEPARATORS_PATTERN.search(config_string):
+        if constants.PATTERN_NAMETEMPLATE_BLACKLIST.search(config_string):
             raise TemplateValidationError('Name templates cannot contain path separators')
         super(NameTemplate, self).__init__(name, config_string, relatives=relatives, tokens=tokens)

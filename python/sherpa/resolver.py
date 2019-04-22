@@ -223,7 +223,7 @@ class TemplateResolver(object):
         parent = None
         relatives = []
 
-        for match in constants.MATCH_PATTERN.finditer(template_string):
+        for match in constants.PATTERN_MATCH.finditer(template_string):
             reference_type, token_name = match.groups()
             if reference_type == constants.REF_PATHTEMPLATE:
                 # Extract parent and relative Templates by name

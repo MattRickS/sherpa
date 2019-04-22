@@ -2,8 +2,8 @@ import re
 
 REF_NAMETEMPLATE = '#'
 REF_PATHTEMPLATE = '@'
-MATCH_PATTERN = re.compile('{([%s%s])?(\w+)}' % (REF_PATHTEMPLATE, REF_NAMETEMPLATE))
-PATH_SEPARATORS_PATTERN = re.compile('[/\\\\]')
+PATTERN_MATCH = re.compile('{([%s%s])?(\w+)}' % (REF_PATHTEMPLATE, REF_NAMETEMPLATE))
+PATTERN_NAMETEMPLATE_BLACKLIST = re.compile('[/\\\\]')
 
 KEY_NAMETEMPLATE = 'names'
 KEY_PATHTEMPLATE = 'paths'
