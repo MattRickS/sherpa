@@ -7,7 +7,7 @@ import yaml
 from sherpa import constants
 from sherpa import exceptions
 from sherpa.resolver import TemplateResolver
-from sherpa.template import Template
+from sherpa.template import NameTemplate, Template
 
 
 @pytest.fixture(scope='module')
@@ -26,10 +26,10 @@ def test_resolver(mock_config):
     resolver = TemplateResolver(config)
 
     template = resolver.get_nametemplate('variant_entity')
-    assert type(template) is Template
+    assert type(template) is NameTemplate
     assert set(template.tokens) == {'variant', 'entity'}
     template = resolver.get_nametemplate('project')
-    assert type(template) is Template
+    assert type(template) is NameTemplate
     assert template.name == 'project'
     assert template.tokens == {'project': resolver.get_token('project')}
 
@@ -60,6 +60,14 @@ def test_resolver(mock_config):
         'variant',
         'seq',
     }
+
+
+def test_nametemplate_separators():
+    with pytest.raises(exceptions.TemplateValidationError):
+        TemplateResolver({
+            constants.KEY_TOKEN: {'token': 'str'},
+            constants.KEY_NAMETEMPLATE: {'name': '{token}/abc'}
+        })
 
 
 def test_missing_reference():

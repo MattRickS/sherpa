@@ -2,9 +2,9 @@ import re
 
 from sherpa import constants
 from sherpa import exceptions
-from sherpa.pathtemplate import PathTemplate
-from sherpa.template import Template
 from sherpa import token
+from sherpa.pathtemplate import PathTemplate
+from sherpa.template import NameTemplate, Template
 
 
 class TemplateResolver(object):
@@ -88,7 +88,7 @@ class TemplateResolver(object):
             if not allow_tokens:
                 raise
             token_obj = self._tokens[template_name]
-            template = Template.from_token(token_obj)
+            template = NameTemplate.from_token(token_obj)
         return template
 
     def get_pathtemplate(self, template_name):
@@ -255,10 +255,10 @@ class TemplateResolver(object):
                 tokens=tokens
             )
         elif template_type == constants.KEY_NAMETEMPLATE:
-            template = Template(template_name,
-                                template_string,
-                                relatives=relatives,
-                                tokens=tokens)
+            template = NameTemplate(template_name,
+                                    template_string,
+                                    relatives=relatives,
+                                    tokens=tokens)
         else:
             raise TypeError('Invalid template type: {}'.format(template_type))
 

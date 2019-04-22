@@ -2,7 +2,7 @@ import re
 from collections import Iterable
 
 from sherpa import constants
-from sherpa.exceptions import FormatError, ParseError
+from sherpa.exceptions import FormatError, ParseError, TemplateValidationError
 from sherpa.token import Token
 
 
@@ -255,3 +255,10 @@ class Template(object):
         regex_tokens = {token.name: '({})'.format(token.regex)
                         for token in self._get_tokens().values()}
         self._regex = ''.join(regex_segments).format(**regex_tokens)
+
+
+class NameTemplate(Template):
+    def __init__(self, name, config_string, relatives=None, tokens=None):
+        if constants.PATH_SEPARATORS_PATTERN.search(config_string):
+            raise TemplateValidationError('Name templates cannot contain path separators')
+        super(NameTemplate, self).__init__(name, config_string, relatives=relatives, tokens=tokens)
