@@ -90,9 +90,7 @@ class Template(object):
         :rtype: str
         """
         if self._regex is None:
-            regex_tokens = {token.name: '({})'.format(token.regex)
-                            for token in self._get_tokens().values()}
-            self._regex = self.pattern.format(**regex_tokens)
+            self._resolve_pattern()
         return self._regex
 
     @property
@@ -199,7 +197,10 @@ class Template(object):
         tokens = self._get_tokens()
         fields = {}
         for field, value in zip(self._ordered_fields, match.groups()):
-            parsed = tokens[field].parse(value)
+            if field in tokens:
+                parsed = tokens[field].parse(value)
+            else:
+                parsed = value
             existing = fields.get(field)
             if existing is not None and existing != parsed:
                 raise ParseError('Different values for token: {} : ({}, {})'.format(
@@ -218,13 +219,17 @@ class Template(object):
         # Walk through this template's string and replace any references to
         # other templates with that template's pattern.
         last_idx = 0
-        segments = []
+        regex_segments = []
+        pattern_segments = []
         for match in constants.MATCH_PATTERN.finditer(self._config_string):
             # We only care about templates, preserve token patterns
-            is_template, name = match.groups()
-            if not is_template:
+            template_type, name = match.groups()
+            if not template_type:
                 ordered_fields.append(name)
                 continue
+            elif template_type == constants.REF_NAMETEMPLATE:
+                ordered_fields.append(name)
+                regex_segments.append('(')
 
             # Rebuild this template's string by cutting at the indices for
             # any template reference, preserving the part that belongs to
@@ -233,10 +238,20 @@ class Template(object):
             start, end = match.span()
             relative_template = linked_templates[name]
             ordered_fields += relative_template.ordered_fields
-            segments.extend((self._config_string[last_idx:start], relative_template.pattern))
+            segments = (self._config_string[last_idx:start], relative_template.pattern)
+            pattern_segments.extend(segments)
+            regex_segments.extend(segments)
             last_idx = end
 
+            if template_type == constants.REF_NAMETEMPLATE:
+                regex_segments.append(')')
+
         # Add any remaining string
-        segments.append(self._config_string[last_idx:])
-        self._pattern = ''.join(segments)
+        pattern_segments.append(self._config_string[last_idx:])
+        self._pattern = ''.join(pattern_segments)
         self._ordered_fields = tuple(ordered_fields)
+
+        regex_segments.append(self._config_string[last_idx:])
+        regex_tokens = {token.name: '({})'.format(token.regex)
+                        for token in self._get_tokens().values()}
+        self._regex = ''.join(regex_segments).format(**regex_tokens)

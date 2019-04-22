@@ -27,14 +27,14 @@ def mock_templates():
     def get_tokens(token_names):
         return [v for k, v in tokens.items() if k in token_names]
 
-    pattern = '/scratch/{one}'
+    pattern = 'scratch_{one}'
     tokens_a = get_tokens(('one', ))
     template_a = Template('templateA', pattern, tokens=tokens_a)
     mta = MockTemplate(template_a,
                        pattern=pattern,
                        linked=(),
                        tokens={t.name: t for t in tokens_a},
-                       path='/scratch/1',
+                       path='scratch_1',
                        fields={'one': 1})
 
     pattern_b = '{#templateA}/{two}/{two}'
@@ -42,11 +42,11 @@ def mock_templates():
     template_b = Template('templateB', pattern_b, relatives=(template_a,), tokens=tokens_b)
     tokens_b.extend(tokens_a)
     mtb = MockTemplate(template_b,
-                       pattern='/scratch/{one}/{two}/{two}',
+                       pattern='scratch_{one}/{two}/{two}',
                        linked=(template_a,),
                        tokens={t.name: t for t in tokens_b},
-                       path='/scratch/1/2/2',
-                       fields={'one': 1, 'two': 2})
+                       path='scratch_1/2/2',
+                       fields={'one': 1, 'two': 2, 'templateA': 'scratch_1'})
 
     pattern_c = 'relative/{a}/{b}'
     tokens_c = get_tokens(('a', 'b'))
@@ -58,7 +58,7 @@ def mock_templates():
                        path='relative/wordA/wordB',
                        fields={'a': 'wordA', 'b': 'wordB'})
 
-    pattern_d = '/scratch/{f1}/{#templateC}'
+    pattern_d = '/scratch/{f1}/{@templateC}'
     tokens_d = get_tokens(('f1', ))
     template_d = Template('templateD', pattern_d, relatives=(template_c,), tokens=tokens_d)
     tokens_d.extend(tokens_c)
